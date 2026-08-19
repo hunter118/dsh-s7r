@@ -9,7 +9,9 @@ S7R is an original System 7-era workstation shell for the [DeepSeek Harness](htt
 
 **S7R** is the desktop environment. **Knowledge Desk** is its Workspace, Agent, and conversation application.
 
-![A naturally arranged S7R desktop with Knowledge Desk, Monitor, Clock, and Trash](./docs/screenshots/s7r-desktop.png)
+![An Expanded S7R desktop with Knowledge Desk naturally overlapping an Agent, Finder, Monitor, and Clock](./docs/screenshots/s7r-desktop.png)
+
+*Expanded 1024 × 768 at native 1× magnification. Knowledge Desk remains the center of the workflow while the active Agent, Finder, Monitor, Clock, desktop aliases, and Trash coexist on one persistent desktop.*
 
 DSH remains the source of truth. S7R does not copy conversations into its own chat database, start an unrelated shell server, or expose arbitrary host paths. It presents the capabilities already owned by DSH and keeps only desktop preferences—window positions, aliases, display choices, Scrapbook cards, and similar UI state—in the browser.
 
@@ -47,10 +49,10 @@ DSH remains the source of truth. S7R does not copy conversations into its own ch
 
 ### Prebuilt release
 
-Download `dsh-s7r-0.9.0.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
+Download `dsh-s7r-0.9.1.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
 
 ```sh
-dsh plugin --profile web add ./dsh-s7r-0.9.0.tgz
+dsh plugin --profile web add ./dsh-s7r-0.9.1.tgz
 dsh --profile web --dump-config
 dsh web
 ```
@@ -100,7 +102,9 @@ Browser-owned shortcuts such as Command-N and Command-W are intentionally not ad
 
 Knowledge Desk is both a Workspace launcher and an Agent browser. Its header and highlighted Workspace row make the current folder explicit, and **New Agent Here** always uses that selection. The Agent side defaults to the current Workspace, can broaden to all Workspaces, filter by run state, sort by recency/name/status, and group results under their Workspace. Opening an existing result reconnects a window to the real DSH `SessionRuntime` rather than creating a second chat record.
 
-![An Agent conversation overlapping Knowledge Desk with the Context Inspector expanded](./docs/screenshots/s7r-agent.png)
+![An Expanded Agent workspace with rendered conversation, Context Inspector, Finder, Monitor, and Clock](./docs/screenshots/s7r-agent.png)
+
+*The Agent stays in context: its Markdown conversation and Context Inspector share the foreground while Finder, live system pressure, Clock, Knowledge Desk, and desktop objects remain available behind it.*
 
 The Agent lifecycle is deliberately explicit:
 
@@ -126,6 +130,10 @@ Streaming follows the newest output only while the reader is already near the bo
 **S7R → DSH Control Center…** is an adapter over the selected Agent's public DSH services, not a second configuration database. It shows and applies real provider model/reasoning routes, allows DSH's Preset to change only while an Agent is still blank, lists Agent-scoped slash commands (including modes registered by its Preset), exposes project Skills through the same invocation path as the composer, and reports the loader's complete plugin inventory. DSH rc.7 publishes plugin inventory as read-only, so S7R intentionally does not draw switches that cannot be committed safely.
 
 **File → New from Stationery…** is a deliberately small Stationery Pad built on DSH Agent Presets. Choose a Workspace and installed Preset, optionally supply a display name and opening prompt, and S7R asks DSH to create the Agent with that composition. Preset descriptions and broken/local status come from DSH; S7R creates no competing template format.
+
+![A real zsh Terminal overlapping native DSH Commands and Modes, Find, Knowledge Desk, and Monitor](./docs/screenshots/s7r-workflows.png)
+
+*The same Expanded desktop can run a real Workspace-scoped zsh terminal over DSH's native command surface while Find, Knowledge Desk, and Monitor continue operating underneath.*
 
 ## Workspaces, Finder, TextEdit, and Preview
 
@@ -196,7 +204,9 @@ System applications and preferences live in their workflow menus. Clock and Puzz
 
 ## Display and wallpaper
 
-![Display controls overlapping Knowledge Desk on the seamless grayscale Cat wallpaper](./docs/screenshots/s7r-display.png)
+![Expanded Display controls with Cat wallpaper, Puzzle, Scrapbook, Knowledge Desk, Finder, Monitor, and Clock](./docs/screenshots/s7r-display.png)
+
+*Display is scrolled directly to wallpaper treatment while the seamless Cat tile, solvable Puzzle, Scrapbook toolbar, Knowledge Desk, Finder, Monitor, and Clock demonstrate that display changes do not suspend the rest of the desktop.*
 
 Display separates four concerns:
 
