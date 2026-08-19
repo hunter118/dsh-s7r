@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["react", "react-dom"]
+  },
+  "include": ["src/apps", "src/client", "src/desktop", "src/display", "src/dsh-compat/client.ts", "src/dsh-compat/protocol.ts", "src/storage", "src/system7", "src/pdfjs.d.ts", "src/assets.d.ts"]
+}

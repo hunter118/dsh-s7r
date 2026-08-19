@@ -1,0 +1,4 @@
+Knowledge Desk browser verification note.
+
+TextEdit preserves DSH filesystem versions and saves through the compatibility boundary.
+Final browser smoke test saved successfully.

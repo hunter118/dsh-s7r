@@ -1,0 +1,4 @@
+*.png binary
+*.pdf binary
+*.woff2 binary
+pnpm-lock.yaml linguist-generated=true

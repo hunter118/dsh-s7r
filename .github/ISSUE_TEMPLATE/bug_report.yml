@@ -1,0 +1,63 @@
+name: Bug report
+description: Report a reproducible S7R problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve S7R. Remove API keys, personal paths, and private conversation text from logs and screenshots.
+  - type: input
+    id: version
+    attributes:
+      label: S7R version
+      placeholder: 0.7.0
+    validations:
+      required: true
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DSH version
+      placeholder: 0.1.0-rc.7
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the visible behavior and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open …
+        2. Select …
+        3. Observe …
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Paste relevant browser/DSH output only after removing secrets and private data.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed API keys, personal paths, and private conversation content.
+          required: true

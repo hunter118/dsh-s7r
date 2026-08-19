@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200">
+  <rect width="320" height="200" fill="#f4f1dc"/>
+  <rect x="14" y="14" width="292" height="172" fill="#ffffff" stroke="#111111" stroke-width="4"/>
+  <path d="M40 146 96 74l46 50 44-82 92 104Z" fill="#6b8e6b" stroke="#111111" stroke-width="4"/>
+  <circle cx="247" cy="62" r="22" fill="#d9a34a" stroke="#111111" stroke-width="4"/>
+  <text x="160" y="174" text-anchor="middle" font-family="monospace" font-size="15" fill="#111111">KNOWLEDGE DESK</text>
+</svg>

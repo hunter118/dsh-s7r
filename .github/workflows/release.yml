@@ -1,0 +1,52 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck, test, and build
+        run: pnpm check
+
+      - name: Pack release
+        run: |
+          mkdir release-artifacts
+          pnpm pack --pack-destination release-artifacts
+          cd release-artifacts
+          sha256sum dsh-s7r-*.tgz > SHA256SUMS
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          release-artifacts/dsh-s7r-*.tgz
+          release-artifacts/SHA256SUMS
+          --verify-tag
+          --generate-notes
+          --title "S7R $GITHUB_REF_NAME"

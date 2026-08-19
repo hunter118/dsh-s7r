@@ -1,0 +1,12 @@
+- insert:
+    - id: knowledge-desk-terminal-service
+      name: '@deepseek-ai/dsh-terminal'
+    - id: knowledge-desk-terminal-backend
+      name: '@deepseek-ai/dsh-terminal-bash'
+      config:
+        shellPath: /bin/zsh
+        shellArgs:
+          - -f
+          - -i
+    - id: knowledge-desk
+      name: dsh-s7r
