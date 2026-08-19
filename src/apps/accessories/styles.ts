@@ -25,7 +25,7 @@ export const ACCESSORY_STYLES = String.raw`
 .kd-control-panel { flex: 1 1 auto; min-height: 0; padding: 2px; background: var(--s7-surface); }
 .kd-wallpaper-presets { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--s7-gap); }
 .kd-wallpaper-presets .s7-radio { min-width: 0; }
-.kd-wallpaper-chip { width: calc(var(--s7-font-size) * 2.6); height: calc(var(--s7-font-size) * 1.5); flex: 0 0 auto; display: inline-grid; place-items: center; border: 1px solid var(--s7-ink); font: var(--s7-small-font)/1 var(--s7-mono); }
+.kd-wallpaper-chip { width: calc(var(--s7-font-size) * 2.6); height: calc(var(--s7-font-size) * 1.5); flex: 0 0 auto; display: inline-grid; place-items: center; border: 1px solid var(--s7-ink); font: var(--s7-small-font)/1 var(--s7-small-mono); }
 .kd-wallpaper-classic { background-color: #bbb; background-image: radial-gradient(#777 1px,transparent 1px); background-size: 3px 3px; }
 .kd-wallpaper-gray { background: #aaa; }
 .kd-wallpaper-pinstripe { background: repeating-linear-gradient(135deg,#888 0 1px,#ddd 1px 3px); }
@@ -34,7 +34,7 @@ export const ACCESSORY_STYLES = String.raw`
 .kd-hidden-file { position: fixed; left: -10000px; width: 1px; height: 1px; opacity: 0; }
 .kd-clock { flex: 1; display: flex; align-items: center; justify-content: space-evenly; padding: var(--s7-pad); font-variant-numeric: tabular-nums; }
 .kd-clock-face { width: calc(var(--s7-font-size) * 4.8); height: calc(var(--s7-font-size) * 4.8); border: 2px solid var(--s7-ink); border-radius: 0; position: relative; background: var(--s7-light); box-shadow: inset 1px 1px 0 var(--s7-white), inset -1px -1px 0 var(--s7-dark); }
-.kd-clock-face::before { content: "12\a6"; white-space: pre; position: absolute; inset: 1px; text-align: center; line-height: calc(var(--s7-font-size) * 3.9); font-size: var(--s7-small-font); }
+.kd-clock-face::before { content: "12\a6"; white-space: pre; position: absolute; inset: 1px; text-align: center; line-height: calc(var(--s7-font-size) * 3.9); font-family: var(--s7-small-mono); font-size: var(--s7-small-font); }
 .kd-clock-hand { position: absolute; left: calc(var(--s7-font-size) * 2.2); bottom: calc(var(--s7-font-size) * 2.2); width: 1px; background: var(--s7-ink); transform-origin: bottom; }
 .kd-hour { height: calc(var(--s7-font-size) * 1.2); width: 2px; }.kd-minute { height: calc(var(--s7-font-size) * 1.8); }.kd-second { height: calc(var(--s7-font-size) * 2); border-left: 1px dotted var(--s7-dark); background: transparent; }
 .kd-clock-pin { position: absolute; width: max(3px,calc(var(--s7-font-size) * .3)); height: max(3px,calc(var(--s7-font-size) * .3)); background: var(--s7-ink); left: calc(var(--s7-font-size) * 2.1); top: calc(var(--s7-font-size) * 2.1); border-radius: 0; }
@@ -45,10 +45,10 @@ export const ACCESSORY_STYLES = String.raw`
 .kd-scrap-card { flex: 1 1 auto; min-height: 0; display: grid; grid-template-rows: auto auto 1fr; gap: var(--s7-gap); padding: calc(var(--s7-pad) + 2px); background: repeating-linear-gradient(0deg,var(--s7-light) 0 var(--s7-line-height),var(--s7-mid) var(--s7-line-height) calc(var(--s7-line-height) + 1px)); }
 .kd-scrap-card > .s7-input { font-weight: 400; }
 .kd-scrap-card > .s7-textarea { min-height: 0; width: 100%; background: var(--s7-white); }
-.kd-scrap-kind { font: var(--s7-small-font)/var(--s7-small-line) var(--s7-mono); }
+.kd-scrap-kind { font: var(--s7-small-font)/var(--s7-small-line) var(--s7-small-mono); }
 .kd-trash-list { flex: 1 1 auto; min-height: 0; }
 .kd-trash-list .kd-list-row > span:last-child { min-width: 0; display: grid; }
-.kd-trash-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--s7-small-font); line-height: var(--s7-small-line); }
+.kd-trash-list small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kd-about { text-align: center; padding: var(--s7-panel-pad); }
 .kd-help-guide { max-height: min(60vh,calc(var(--s7-font-size) * 32)); overflow: auto; text-align: left; }
 .kd-help-guide > p { margin: 0 0 var(--s7-gap); }

@@ -10,7 +10,7 @@ export const DSH_APP_STYLES = String.raw`
 .kd-native-description small { color: var(--s7-dark); }
 .kd-native-control > .kd-toolbar .s7-select { min-width: min(calc(var(--s7-font-size) * 24),55%); }
 .kd-native-tabs { display: grid; grid-template-columns: 1.15fr 1.4fr .6fr 1fr; gap: 1px; padding: var(--s7-pad); border-bottom: 1px solid var(--s7-dark); background: var(--s7-mid); overflow: hidden; }
-.kd-native-tabs .s7-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--s7-small-font); }
+.kd-native-tabs .s7-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: var(--s7-small-font)/var(--s7-small-line) var(--s7-small-face); }
 .kd-native-body { flex: 1 1 auto; min-height: 0; padding: var(--s7-gap); background: var(--s7-surface); }
 .kd-native-cards { display: grid; gap: var(--s7-gap); }
 .kd-native-cards > section { padding: var(--s7-pad); border: 1px solid var(--s7-dark); box-shadow: inset 1px 1px 0 var(--s7-white); background: var(--s7-light); }

@@ -23,6 +23,7 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 - **0.7** completed desktop multi-select/Trash, Agent side panels, safe Markdown rendering, relative path drops, toolbar reflow fixes, and Classic Dots defaults.
 - **0.8** made Workspace selection and Agent browsing explicit, added non-disruptive stream following, contextual menus, an Agent switcher, and reversible window tiling.
 - **0.9** completed object-level contextual menus, native DSH model/Preset/command/Skill/plugin surfaces, Agent Preset Stationery, and exact-scale Balloon Help.
+- **0.9.1** added native 8px small-text faces and removed larger-master downscaling from every semantic small-text surface.
 
 ## Architecture decisions
 

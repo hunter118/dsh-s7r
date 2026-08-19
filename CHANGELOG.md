@@ -2,6 +2,14 @@
 
 All notable user-facing changes to S7R are documented here. The project follows semantic versioning while its DSH dependency remains in release-candidate status.
 
+## 0.9.1 - 2026-08-20
+
+### Fixed
+
+- Small labels now use native Fusion Pixel Font masters instead of rendering the active 10px/12px face at a smaller CSS size.
+- Compact UI uses the Simplified Chinese 8px proportional/monospaced faces for menu section headings, metadata, badges, desktop labels, and other semantic small text; Comfortable UI uses the native 10px faces for the same role.
+- View/Window menu headings such as **Open Windows** and **Agents** now retain their intended pixel grid.
+
 ## 0.9.0 - 2026-08-20
 
 ### Added

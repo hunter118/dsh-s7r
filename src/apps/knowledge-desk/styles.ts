@@ -35,7 +35,7 @@ export const KNOWLEDGE_DESK_STYLES = String.raw`
 .kd-message-tool { margin-left: var(--s7-font-size); font-family: var(--s7-mono); font-size: var(--s7-font-size); background: var(--s7-surface); }
 .kd-message-context { border-style: dashed; }
 .kd-message-error, .kd-composer-error { background: var(--s7-mid); border: 2px solid var(--s7-ink); }
-.kd-role { font: var(--s7-small-font)/var(--s7-small-line) var(--s7-mono); border: 1px solid var(--s7-ink); padding: 0 2px; background: var(--s7-ink); color: var(--s7-white); }
+.kd-role { font: var(--s7-small-font)/var(--s7-small-line) var(--s7-small-mono); border: 1px solid var(--s7-ink); padding: 0 2px; background: var(--s7-ink); color: var(--s7-white); }
 .kd-message-text { white-space: pre-wrap; line-height: var(--s7-line-height); }
 .kd-markdown { white-space: normal; line-height: var(--s7-line-height); overflow-wrap: anywhere; }
 .kd-markdown > :first-child { margin-top: 0; }
@@ -88,10 +88,10 @@ export const KNOWLEDGE_DESK_STYLES = String.raw`
 .kd-launcher-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--s7-gap); padding: var(--s7-pad) calc(var(--s7-resizer) + var(--s7-gap)) var(--s7-pad) var(--s7-pad); border-top: 1px solid var(--s7-dark); background: var(--s7-surface); }
 .kd-upstream-archive { margin: 0; padding: var(--s7-pad); border-top: 1px solid var(--s7-dark); background: var(--s7-mid); }
 .kd-launcher-pane .kd-list-row > span:not(.kd-led):not(.kd-spacer):not(.s7-app-icon) { min-width: 0; display: grid; gap: 2px; }
-.kd-launcher-pane small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--s7-small-font); line-height: var(--s7-small-line); }
+.kd-launcher-pane small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .kd-workspace-row .s7-app-icon { width: var(--s7-control-height); height: calc(var(--s7-control-height) - 1px); flex-basis: var(--s7-control-height); box-shadow: none; }
 .kd-list-heading { position: sticky; top: 0; z-index: 1; min-height: var(--s7-control-height); display: flex; align-items: center; justify-content: space-between; padding: 1px var(--s7-pad); border-bottom: 1px solid var(--s7-ink); background: var(--s7-mid); box-shadow: inset 0 1px 0 var(--s7-white); }
-.kd-agent-row small { font-family: var(--s7-mono); }
+.kd-agent-row small { font-family: var(--s7-small-mono); }
 .kd-welcome-mark { margin: 0 auto; width: calc(var(--s7-icon) * 1.7); height: calc(var(--s7-icon) * 1.7); display: grid; place-items: center; border: 3px double var(--s7-ink); font: var(--s7-font-size) var(--s7-mono); background: var(--s7-surface); box-shadow: 2px 2px 0 var(--s7-dark); }
 @container (min-width: 480px) { .kd-launcher-columns { grid-template-columns: minmax(calc(var(--s7-font-size) * 19),.75fr) minmax(0,1.25fr); } }
 @container (max-width: 479px) {

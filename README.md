@@ -201,7 +201,7 @@ System applications and preferences live in their workflow menus. Clock and Puzz
 Display separates four concerns:
 
 - **Logical work area:** **Fit Browser** recomputes the usable desktop from the current viewport; Classic 512×342, Compact 640×480, Standard 832×624, and Expanded 1024×768 preserve fixed period-style work areas.
-- **Interface size:** Compact 10px and Comfortable 12px are separate bitmap masters. Menus, title bars, controls, spacing, scrollbars, and default window sizes all change together instead of merely enlarging text.
+- **Interface size:** Compact 10px and Comfortable 12px are separate bitmap masters. Their semantic small text also switches to a native 8px or 10px master, respectively. Menus, title bars, controls, spacing, scrollbars, and default window sizes all change together instead of merely enlarging text.
 - **Pixel magnification:** 1× or exact 2× integer layout magnification. Fit Browser halves the logical work area at 2× before magnifying it, and pointer deltas are mapped back to logical coordinates.
 - **Content filters:** Preview images and rasterized PDF pages can independently use ordered 1-bit black/white dithering or direct grayscale. Conversation images and source files are left unchanged.
 
@@ -261,4 +261,4 @@ Project references:
 
 S7R is MIT licensed. It is an independent project and is not affiliated with or endorsed by Apple Inc. or DeepSeek. No Apple artwork, system files, proprietary fonts, sounds, screenshots, or extracted resources are bundled. Icons and patterns are original CSS/text constructions; the Cat wallpaper is an original generated bitmap processed by S7R's local grayscale pipeline.
 
-The browser bundle includes Simplified Chinese 10px/12px faces from **Fusion Pixel Font** under SIL OFL 1.1 and **PDF.js** under Apache-2.0. Copyright notices and full license texts are included in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) and [`THIRD_PARTY_LICENSES/`](./THIRD_PARTY_LICENSES/).
+The browser bundle includes Simplified Chinese proportional and monospaced 8px/10px/12px faces from **Fusion Pixel Font** under SIL OFL 1.1 and **PDF.js** under Apache-2.0. Copyright notices and full license texts are included in [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) and [`THIRD_PARTY_LICENSES/`](./THIRD_PARTY_LICENSES/).

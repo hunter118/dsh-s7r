@@ -120,7 +120,7 @@ S7R renders live DOM at discrete integer metrics. It does not continuously scree
 - **Fit Browser** derives a logical area from the viewport.
 - Fixed period-style resolutions remain available.
 - **1×/2×** uses exact integer layout magnification and inverse pointer mapping.
-- **Compact 10px/Comfortable 12px** use their corresponding native Fusion Pixel Font masters and discrete UI metrics.
+- **Compact 10px/Comfortable 12px** use their corresponding native Fusion Pixel Font masters and discrete UI metrics; semantic small text uses a separate native 8px/10px master instead of shrinking the active face.
 - Window bounds reflow when resolution or interface size changes.
 
 Images, PDF canvases, and wallpapers have an optional content pipeline:
