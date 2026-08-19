@@ -5,27 +5,33 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-black.svg)](./LICENSE)
 [![DSH: 0.1.0-rc.7](https://img.shields.io/badge/DSH-0.1.0--rc.7-666.svg)](./COMPATIBILITY.md)
 
-S7R is an original System 7-era workstation shell for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Web UI. It turns real DSH Agents, Workspaces, files, terminal sessions, tools, and persisted history into a coherent multi-window desktop instead of placing a retro skin over a chat page.
+S7R is an original System 7-era workstation shell for the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) Web UI. It turns real DSH Agents, Workspaces, files, terminals, tools, and persisted history into a coherent multi-window desktop instead of placing a retro skin over a chat page.
 
 **S7R** is the desktop environment. **Knowledge Desk** is its Workspace, Agent, and conversation application.
 
-![S7R desktop with Knowledge Desk, Monitor, and desk accessories](./docs/screenshots/s7r-desktop.png)
+![A naturally arranged S7R desktop with Knowledge Desk, Monitor, Clock, and Trash](./docs/screenshots/s7r-desktop.png)
+
+DSH remains the source of truth. S7R does not copy conversations into its own chat database, start an unrelated shell server, or expose arbitrary host paths. It presents the capabilities already owned by DSH and keeps only desktop preferences—window positions, aliases, display choices, Scrapbook cards, and similar UI state—in the browser.
 
 > [!IMPORTANT]
 > S7R currently targets DSH `0.1.0-rc.7` exactly. DSH is in developer preview and later releases may require adapter updates. See [Compatibility](#compatibility-and-known-limitations).
 
-## Highlights
+## Feature map
 
-- Real DSH Agent streaming, reasoning, tools, attachments, history, steering, cancellation, and persisted sessions
-- Native Workspace folder selection and a Finder/TextEdit/Preview workflow contained to that Workspace
-- Real owner-scoped `/bin/zsh` Terminal with retained low-latency output
-- Timeline folding, system/background Monitor, context pressure inspection, compaction, and summarized Agent handoff
-- Agent search, rename, export, reversible archive/restore, completion notifications, and optional safe Markdown rendering
-- Global Find across file names, source contents, conversation messages, or every persisted Agent event
-- Restorable multi-window desktop with draggable aliases, marquee multi-select, group movement, and alias-only Trash
-- Scrapbook, Clock, solvable 4×4 Puzzle, Display control panel, seamless Cat wallpaper, and imported wallpaper processing
-- Native 10px/12px Simplified Chinese bitmap fonts, exact 1×/2× magnification, grayscale depth, and hard pixel edges
-- Secure `DEEPSEEK_API_KEY` setup through DSH's write-only credential service
+| Area | What it does |
+| --- | --- |
+| **Workspaces** | Registers a real folder with DSH, remembers recent folders, and uses the selected Workspace as the filesystem boundary for Agents, Finder, Preview, TextEdit, Terminal, and Find. |
+| **Knowledge Desk** | Lists Workspaces and Agents together; searches names, paths, and IDs; creates and reopens Agents; renames, exports, archives, restores, or places them on the desktop. |
+| **Agent windows** | Streams real DSH output and reasoning, shows tools and attachments, accepts steering/cancellation, reloads persisted history, and optionally renders completed Markdown safely. |
+| **Context and Timeline** | Shows provider-reported context length and pressure, estimates content shares, requests compaction or a summary-carrying successor, and exposes the complete event stream with adjacent chunks folded into runs. |
+| **Files** | Provides Workspace-contained Finder, conflict-aware plain-text editing, image/PDF Preview, and portable path drops into Agents. Host paths are validated again on every request. |
+| **Terminal** | Opens an owner-scoped DSH terminal running `/bin/zsh -f -i`, even when no Agent window is open, with retained low-latency output and visible command acknowledgement. |
+| **Find** | Searches file/folder names, source contents, visible messages, or all persisted Agent events as independent scopes, then opens the matching file, Agent, or Timeline location. |
+| **Monitor and notices** | Combines live Agent state, background jobs, context pressure, host CPU/active RAM, and DSH process RSS; minimal notices appear when an Agent completes. |
+| **Desktop** | Restores window geometry and z-order; supports Workspace, Agent, Finder-item, and Scrapbook aliases; marquee selection; group dragging; and reversible alias-only Trash. |
+| **Scrapbook and accessories** | Captures editable conversation cards with one-click copy and desktop placement; includes Clock and a legally shuffled, always-solvable 4×4 Puzzle. |
+| **Display and wallpaper** | Offers Fit Browser or fixed logical work areas, 10px/12px bitmap UI masters, exact 1×/2× magnification, Preview filters, built-in patterns, a seamless Cat tile, and processed imported wallpaper. |
+| **Credentials** | Reads only DSH's configured/source/writable status and writes `DEEPSEEK_API_KEY` through DSH's loopback credential service; the saved secret is never returned to the page. |
 
 ## Requirements
 
@@ -88,27 +94,35 @@ Browser-owned shortcuts such as Command-N and Command-W are intentionally not ad
 
 ## Knowledge Desk and Agents
 
-Knowledge Desk is both a Workspace launcher and an Agent browser. It searches by Agent name, Workspace path, or ID; restores S7R-archived conversations; and connects windows to the real DSH `SessionRuntime` rather than duplicating chat state.
+Knowledge Desk is both a Workspace launcher and an Agent browser. Its Workspace side selects the folder that new work belongs to; its Agent side searches and manages the conversations already associated with that folder. Opening an existing result reconnects a window to the real DSH `SessionRuntime` rather than creating a second chat record.
 
-![Agent conversation with Context, Timeline, and Other controls](./docs/screenshots/s7r-agent.png)
+![An Agent conversation overlapping Knowledge Desk with the Context Inspector expanded](./docs/screenshots/s7r-agent.png)
+
+The Agent lifecycle is deliberately explicit:
+
+1. **New Agent** starts in the selected Workspace. Closing its window only closes the view.
+2. **Open** returns to the same persisted DSH session, including its historical events.
+3. **Rename** changes the human-facing title without changing the session ID.
+4. **Export** produces a complete Markdown transcript plus a machine-readable JSON event archive.
+5. **Archive** hides the Agent in S7R without deleting its DSH log; the Archived view can restore it.
+6. **Desktop** creates a reopenable alias. Removing that alias does not archive or delete the Agent.
 
 Every Agent window keeps a compact single-line toolbar:
 
-- **Context** opens provider-reported token length/percentage when available, estimated shares for user/assistant/reasoning/tools/Workspace material, 75%/90% warnings, **Compact Now**, and **New Agent with Current Summary**.
+- **Context** opens provider-reported token length/percentage when available, estimated shares for user/assistant/reasoning/tools/Workspace material, 75%/90% warnings, **Compact Now**, and **New Agent with Current Summary**. Shares are character-based diagnostics, not fake token accounting.
 - **Timeline** opens the complete live or cold persisted event ledger. Adjacent same-type events such as `assistant/chunk` fold into expandable runs.
 - **Other…** provides rename, complete Markdown/JSON export, reversible archive, desktop placement, and a persistent Markdown-rendering toggle.
 
-Completed output can safely render headings, emphasis, inline/fenced code, lists, quotes, and tables. Streaming stays plain text, raw HTML is never injected, and LaTeX stays source text. Color Emoji are normalized to monochrome pixel-font symbols or short text without changing stored conversation data.
+Completed output can safely render headings, emphasis, inline/fenced code, lists, quotes, and tables. Streaming remains plain text until the message is complete, raw HTML is never injected, and LaTeX remains source text. The rendering switch is per browser profile and never rewrites stored conversation data. Color Emoji are displayed as monochrome pixel-font symbols or short text for visual consistency.
 
 ## Workspaces, Finder, TextEdit, and Preview
 
-Finder reads the selected session's canonical Workspace through DSH. Every host path is resolved again and rejected if it escapes that root.
+Choosing a folder uses DSH's native picker and registers that external directory as a Workspace; S7R is not limited to the folder from which the Web UI was launched. The most recently used valid Workspace can be reopened on the next visit. Finder then reads the selected session's canonical root through DSH, and every host path is resolved again and rejected if it escapes that root.
 
-- Double-click folders to navigate.
-- Text and source files open in TextEdit.
-- Images and PDFs open in Preview.
-- TextEdit saves use the last-read filesystem version and surface concurrent changes instead of overwriting them silently.
-- Preview has page, zoom, fit, and temporary **Inspect Original** controls.
+- Double-click a directory to navigate; **Open in Terminal** starts zsh at that directory.
+- Text and source files open in TextEdit. Saves carry the last-read filesystem version so an external edit is reported as a conflict instead of being silently overwritten.
+- Images and PDFs open in Preview. PDFs are rasterized locally with PDF.js; page, zoom, fit, and temporary **Inspect Original** controls do not alter the file.
+- Drag a Finder item onto the desktop to create an alias, or into an Agent to insert its path. Paths inside the Agent's Workspace become `./relative/path`; outside paths remain absolute.
 
 Display can filter Preview images and PDF pages through either ordered 1-bit black/white dithering or direct luminance grayscale. Filtering is cached, non-destructive, and never rewrites the source file.
 
@@ -116,7 +130,7 @@ Display can filter Preview images and PDF pages through either ordered 1-bit bla
 
 Terminal uses the official DSH terminal service and shell backend with `/bin/zsh -f -i`. DSH owns process spawning, sandbox policy, scrollback, signaling, terminal identity, and Agent ownership. S7R acknowledges submitted lines immediately and polls retained foreground output without overlapping reads.
 
-When no Agent is active, S7R creates a fresh blank live owner in the current/recent Workspace rather than requiring a visible Agent window.
+**File → New Terminal** works independently of visible Agent and Finder windows. When no live owner exists, S7R creates a fresh blank owner in the current/recent Workspace, so the terminal does not fail with a missing Knowledge Desk session. **Open in Terminal** from Finder starts at the displayed directory.
 
 DSH rc.7 is line-oriented: it does not expose a raw browser keystroke stream or post-spawn PTY resizing. Terminal therefore behaves like a responsive real line console, not an xterm-style raw attachment.
 
@@ -124,30 +138,26 @@ DSH rc.7 is line-oriented: it does not expose a raw browser keystroke stream or 
 
 **File → Find…** has independent search depths:
 
-- file and folder names;
-- source/text contents;
-- visible conversation messages;
-- every persisted event, including tools, reasoning, and context records.
+- **Names** — file and folder names only; useful for navigation without reading file contents.
+- **Source contents** — text/code inside the active Workspace, with hidden directories and `node_modules` skipped.
+- **Conversation messages** — visible user and assistant messages across persisted Agents.
+- **All Agent events** — the complete cold event stream, including tools, reasoning, chunks, and context records.
 
 Matches route to Finder/TextEdit/Preview, the Agent, or the exact Timeline event. Traversal stops at 5,000 files, skips hidden and `node_modules` directories, reads at most 1 MiB per source file, and returns at most 200 results.
 
-![Monitor with live Agents, background work, context, CPU, and memory](./docs/screenshots/s7r-monitor.png)
-
 Monitor combines:
 
-- live Agent state and model;
-- DSH background jobs;
-- latest provider-reported context pressure;
-- host-wide CPU and active RAM;
-- DSH process RSS.
+- **Agents** — live status (`RUNNING`, `IDLE`, or terminal state), model, latest event time, and provider-reported context pressure.
+- **Background** — DSH jobs that may continue after an Agent window is closed.
+- **System** — host-wide CPU and active RAM, plus DSH process RSS so process memory is not confused with whole-machine pressure.
 
-On macOS, inactive/file-cache pages are excluded from active RAM so reusable cache does not appear as application pressure. Minimal desktop notices appear only when an Agent crosses into a completed state; selecting one opens that Agent.
+On macOS, inactive/file-cache pages are excluded from active RAM so reusable cache does not appear as application pressure. Minimal desktop notices appear only when an Agent crosses into a completed state; selecting one opens that Agent. Monitor is visible in the desktop overview above rather than presented as an isolated full-screen panel.
 
 ## Desktop workflow
 
 Window bounds, z-order, zoom/collapse state, desktop aliases, reversible Agent archives, Trash, and Markdown preference survive reload. Terminal windows are the intentional exception because serialized windows cannot safely reattach live owner-scoped PTYs.
 
-Workspaces, Agents, Finder items, and individual Scrapbook cards can become desktop objects. Drag empty desktop space to marquee-select several aliases and drag any selected alias to move the group.
+Workspaces, Agents, Finder items, and individual Scrapbook cards can become desktop objects. Drag empty desktop space to marquee-select several aliases; then drag any selected item to move the group while preserving its layout. Opening an alias routes to its real object rather than a browser-local copy.
 
 Folders have two explicit desktop meanings:
 
@@ -160,7 +170,7 @@ Paths dropped into an Agent become portable `./relative/path` references when th
 
 ## Scrapbook and desk accessories
 
-Scrapbook stores browser-local editable cards with source references. Agent capture links retain a visited state, and each card has one-click copy. Individual cards can be placed on the desktop.
+**Add to Scrapbook** captures a message into a browser-local editable card while retaining its source Agent reference. The capture link immediately takes on a visited-style state as feedback, each card has one-click copy, and a single card can be placed on the desktop without opening the whole Scrapbook.
 
 Clock is a live analog/digital desk accessory. Puzzle is an original 4×4 sliding-number implementation; shuffling performs only legal moves, so every generated board is solvable.
 
@@ -168,24 +178,25 @@ System applications and preferences live in their workflow menus. Clock and Puzz
 
 ## Display and wallpaper
 
-![Display control panel with logical resolution and wallpaper controls](./docs/screenshots/s7r-display.png)
+![Display controls overlapping Knowledge Desk on the seamless grayscale Cat wallpaper](./docs/screenshots/s7r-display.png)
 
 Display separates four concerns:
 
-- **Logical work area:** Fit Browser, Classic 512×342, Compact 640×480, Standard 832×624, or Expanded 1024×768
-- **Interface size:** Compact 10px or Comfortable 12px, each with matching discrete control/window metrics
-- **Pixel magnification:** exact 1× or 2× layout magnification with inverse pointer mapping
-- **Content filters:** optional Preview image/PDF processing in 1-bit or grayscale
+- **Logical work area:** **Fit Browser** recomputes the usable desktop from the current viewport; Classic 512×342, Compact 640×480, Standard 832×624, and Expanded 1024×768 preserve fixed period-style work areas.
+- **Interface size:** Compact 10px and Comfortable 12px are separate bitmap masters. Menus, title bars, controls, spacing, scrollbars, and default window sizes all change together instead of merely enlarging text.
+- **Pixel magnification:** 1× or exact 2× integer layout magnification. Fit Browser halves the logical work area at 2× before magnifying it, and pointer deltas are mapped back to logical coordinates.
+- **Content filters:** Preview images and rasterized PDF pages can independently use ordered 1-bit black/white dithering or direct grayscale. Conversation images and source files are left unchanged.
 
-Classic Dots is the default wallpaper. Desk Gray, Pinstripes, seamless Cat, and imported images are also available. Cat and imports are sampled onto a genuine low-resolution grid, filtered, and baked into an integer nearest-neighbor PNG. Imports accumulate in a named library and can tile at native pixel size or fill the desktop. The source image is not retained after processing.
-
-![Preview filters and pixel-processed wallpaper controls](./docs/screenshots/s7r-wallpaper.png)
+Classic Dots is the default wallpaper. Desk Gray, Pinstripes, seamless Cat, and imported images are also available. Cat and imports are sampled onto a genuine low-resolution grid, filtered, and baked into an integer nearest-neighbor PNG. Imports accumulate in a named dropdown library and can tile at pixel size or fill the desktop. Re-rendering offers 1px or 2px blocks; the original imported file is not retained after processing.
 
 ## Persistence and data ownership
 
-S7R stores versioned browser-local records for display preferences, imported wallpaper, Scrapbook cards, window/desktop state, reversible archives, Trash, and Markdown preference. Malformed records fail closed and known older formats migrate explicitly.
+| Owner | Data |
+| --- | --- |
+| **DSH** | Agents, conversation/event logs, Workspace registration, files, terminal owners/processes, tools, credentials, and background jobs. |
+| **S7R browser profile** | Display preferences, processed imported wallpaper, Scrapbook cards, window and desktop layout, alias Trash, reversible S7R archives, and Markdown preference. |
 
-DSH remains authoritative for Agents, conversations, Workspace registration, files, terminal ownership, tools, and background jobs. Closing an Agent window never deletes its DSH session.
+Browser-local records are versioned; malformed records fail closed and known older formats migrate explicitly. Closing an Agent window never deletes its DSH session. Clearing browser site data resets S7R's local desktop customizations but does not delete DSH conversations or Workspace files.
 
 ## Security model
 
