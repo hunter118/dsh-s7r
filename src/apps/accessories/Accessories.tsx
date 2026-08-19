@@ -6,7 +6,7 @@ import type { DisplayPreferences } from '../../display/preferences.ts'
 import { importWallpaperFile } from '../../display/wallpaper.ts'
 import type { ScrapbookCard } from '../../storage/scrapbook.ts'
 import type { ImportedWallpaper } from '../../storage/wallpaper.ts'
-import type { TrashedShortcutRecord } from '../../storage/desktop.ts'
+import type { AgentMenuLimit, TrashedShortcutRecord } from '../../storage/desktop.ts'
 import { AppIcon, SystemButton, SystemCheckbox, SystemDialog, SystemInput, SystemPanel, SystemRadio, SystemSelect, SystemStatusBar, SystemTextArea } from '../../system7/primitives.tsx'
 import { errorMessage, formatBytes, formatContextUsage, formatTime, pathBasename } from '../common.tsx'
 import { groupConsecutiveTimelineEvents } from './timeline-groups.ts'
@@ -168,7 +168,7 @@ export function DisplayControlPanel({ preferences, importedWallpapers, selectedW
   </div>
 }
 
-export function SettingsApp({ adapter }: { adapter: DshClientAdapter }) {
+export function SettingsApp({ adapter, agentMenuLimit, onAgentMenuLimitChange }: { adapter: DshClientAdapter; agentMenuLimit: AgentMenuLimit; onAgentMenuLimitChange: (limit: AgentMenuLimit) => void }) {
   const [status, setStatus] = useState<{ configured: boolean; source?: string; writable: boolean } | null>(null)
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
@@ -219,6 +219,12 @@ export function SettingsApp({ adapter }: { adapter: DshClientAdapter }) {
       {error === null ? null : <div className="s7-inline-error">{error}</div>}
       {notice === null ? null : <div className="kd-settings-notice" role="status">{notice}</div>}
     </SystemPanel>
+    <SystemPanel title="Window Menu"><div className="kd-form-grid">
+      <label htmlFor="kd-agent-menu-limit">Recent Agents</label>
+      <SystemSelect id="kd-agent-menu-limit" aria-label="Recent Agents in Window menu" value={agentMenuLimit} onChange={event => { onAgentMenuLimitChange(Number(event.currentTarget.value) as AgentMenuLimit) }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(value => <option value={value} key={value}>{value}</option>)}
+      </SystemSelect>
+    </div><p className="kd-muted">Window shows this many most recently active Agents. The default is 5.</p></SystemPanel>
     <SystemPanel title="What this controls"><p>The default DeepSeek provider expects <code>DEEPSEEK_API_KEY</code>. Provider and model selection remain owned by the Agent session; this setting supplies the credential they use.</p></SystemPanel>
     {confirmRemove ? <SystemDialog title="Remove DeepSeek API Key" onClose={() => { if (!busy) setConfirmRemove(false) }}><p>Remove the DSH-managed DEEPSEEK_API_KEY? Existing Agent history is not deleted.</p><div className="kd-dialog-actions"><SystemButton disabled={busy} onClick={() => { setConfirmRemove(false) }}>Cancel</SystemButton><SystemButton disabled={busy} onClick={() => { void remove() }}>Remove Key</SystemButton></div></SystemDialog> : null}
   </div>

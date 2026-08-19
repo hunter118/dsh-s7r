@@ -9,7 +9,7 @@ export const KNOWLEDGE_DESK_STYLES = String.raw`
 .kd-agent-main { flex: 1 1 auto; min-height: 0; display: flex; }
 .kd-agent-main > .kd-conversation-shell { min-width: 0; }
 .kd-follow-output { position: absolute; right: calc(var(--s7-scrollbar) + var(--s7-gap)); bottom: var(--s7-gap); z-index: 2; }
-.kd-follow-output-new { border-width: 2px; background: var(--s7-ink); color: var(--s7-white); box-shadow: 1px 1px 0 var(--s7-white), 2px 2px 0 var(--s7-ink); }
+.kd-follow-output.kd-follow-output-new { border-width: 2px; background: var(--s7-light); color: var(--s7-ink); text-shadow: none; box-shadow: inset 1px 1px 0 var(--s7-white), inset -1px -1px 0 var(--s7-dark), 2px 2px 0 var(--s7-ink); }
 .kd-context-inspector, .kd-agent-actions-inspector { flex: 0 0 min(42%,calc(var(--s7-font-size) * 25)); min-width: calc(var(--s7-font-size) * 19); min-height: 0; overflow: auto; padding: var(--s7-pad); border-left: 2px solid var(--s7-ink); background: var(--s7-surface); }
 .kd-context-inspector > header { display: flex; justify-content: space-between; gap: var(--s7-gap); border-bottom: 1px solid var(--s7-dark); margin-bottom: var(--s7-gap); }
 .kd-agent-actions-inspector > header { display: flex; justify-content: space-between; gap: var(--s7-gap); border-bottom: 1px solid var(--s7-dark); margin-bottom: var(--s7-gap); }

@@ -18,7 +18,7 @@ import { readScrapbook, writeScrapbook, type ScrapbookCard } from '../storage/sc
 import { readImportedWallpapers, writeImportedWallpapers, type ImportedWallpaper, type ImportedWallpaperLibrary } from '../storage/wallpaper.ts'
 import { buildSeamlessCatTile, filterWallpaperSource } from '../display/wallpaper.ts'
 import catWallpaperSprite from '../assets/cat-wallpaper-sprite.png'
-import { readDesktopPersistence, shortcutId, writeDesktopPersistence, type ArchivedAgentRecord, type DesktopShortcut, type TrashedShortcutRecord } from '../storage/desktop.ts'
+import { readDesktopPersistence, shortcutId, writeDesktopPersistence, type AgentMenuLimit, type ArchivedAgentRecord, type DesktopShortcut, type TrashedShortcutRecord } from '../storage/desktop.ts'
 import { readDragItem, writeDragItem, type S7RDragItem } from './drag.ts'
 import { moveShortcutGroup, normalizedSelectionRect, shortcutsInRect, type SelectionRect } from './selection.ts'
 
@@ -85,6 +85,7 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
   const [archivedAgents, setArchivedAgents] = useState<ArchivedAgentRecord[]>(restored.archivedAgents)
   const [trash, setTrash] = useState<TrashedShortcutRecord[]>(restored.trash)
   const [renderMarkdown, setRenderMarkdown] = useState(restored.renderMarkdown)
+  const [agentMenuLimit, setAgentMenuLimit] = useState<AgentMenuLimit>(restored.agentMenuLimit)
   const [preferences, setPreferences] = useState<DisplayPreferences>(() => readDisplayPreferences(window.localStorage))
   const [cards, setCards] = useState<ScrapbookCard[]>(() => readScrapbook(window.localStorage))
   const [wallpaperLibrary, setWallpaperLibrary] = useState<ImportedWallpaperLibrary>(() => readImportedWallpapers(window.localStorage))
@@ -167,7 +168,7 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     }
   }, [desktop.windows, preferences.baseFontSize, workArea])
   useEffect(() => { writeScrapbook(window.localStorage, cards) }, [cards])
-  useEffect(() => { writeDesktopPersistence(window.localStorage, { version: 2, desktop, shortcuts, archivedAgents, trash, renderMarkdown }) }, [archivedAgents, desktop, renderMarkdown, shortcuts, trash])
+  useEffect(() => { writeDesktopPersistence(window.localStorage, { version: 2, desktop, shortcuts, archivedAgents, trash, renderMarkdown, agentMenuLimit }) }, [agentMenuLimit, archivedAgents, desktop, renderMarkdown, shortcuts, trash])
   useEffect(() => {
     if (sessions.phase === 'pending') return
     const next = new Map<string, boolean>()
@@ -434,7 +435,7 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
       case 'terminal': return sessionId === undefined ? <div className="kd-empty">A live agent session is required for a terminal.</div> : <TerminalApp adapter={adapter} sessionId={sessionId} cwd={valueOf(window.payload, 'cwd')} />
       case 'timeline': return sessionId === undefined ? <div className="kd-empty">Choose an agent to inspect its timeline.</div> : <TimelineApp adapter={adapter} sessionId={sessionId} onOpenAgent={focusOrOpenAgent} onOpenFile={openFile} />
       case 'monitor': return <MonitorApp adapter={adapter} tasks={monitorTasks} onOpenAgent={focusOrOpenAgent} />
-      case 'settings': return <SettingsApp adapter={adapter} />
+      case 'settings': return <SettingsApp adapter={adapter} agentMenuLimit={agentMenuLimit} onAgentMenuLimitChange={setAgentMenuLimit} />
       case 'control-panel': return <DisplayControlPanel preferences={preferences} importedWallpapers={wallpaperLibrary.items} selectedWallpaperId={wallpaperLibrary.selectedId} onChange={setPreferences} onImportWallpaper={installImportedWallpaper} onSelectWallpaper={selectImportedWallpaper} onRemoveWallpaper={removeImportedWallpaper} />
       case 'clock': return <ClockApp />
       case 'puzzle': return <PuzzleApp />
@@ -468,7 +469,7 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
       onPointerUp={event => { if (marquee?.pointerId === event.pointerId) { setMarquee(null); event.currentTarget.releasePointerCapture(event.pointerId) } }}
       onKeyDown={event => { const target = event.target as HTMLElement; if ((event.key === 'Delete' || event.key === 'Backspace') && selectedShortcutIds.length > 0 && !target.matches('input,textarea,[contenteditable="true"]')) { event.preventDefault(); moveToTrash(selectedShortcutIds) } }}
       onDragOver={event => { if (event.dataTransfer.types.includes('application/x-s7r-desktop-item')) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }} onDrop={dropOnDesktop} style={{ width: desktopSize.width, height: desktopSize.height, zoom: preferences.pixelScale, ...wallpaperStyle }} data-resolution={preferences.resolution} data-base-font={preferences.baseFontSize} data-pixel-scale={preferences.pixelScale}>
-      <MenuBar active={active} windows={desktop.windows} clock={now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} agents={sessionRows.map(row => ({ id: row.id, title: row.title, status: row.running ? 'running' : row.completed ? 'completed' : 'idle', updatedAt: row.updatedAt }))}
+      <MenuBar active={active} windows={desktop.windows} clock={now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} agents={sessionRows.map(row => ({ id: row.id, title: row.title, status: row.running ? 'running' : row.completed ? 'completed' : 'idle', updatedAt: row.updatedAt }))} agentMenuLimit={agentMenuLimit}
         onAccessory={openAccessory} onSettings={() => { open('settings', 'Settings') }} onNewAgent={() => { void newAgent().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onChooseFolder={() => { void chooseFolder().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onOpenAgents={openAgentBrowser} onOpenFinder={() => { openFinder() }} onOpenTerminal={() => { void openTerminalForCurrent() }} onFind={() => { open('find', 'Find') }} onClose={() => { if (active !== undefined) requestClose(active.id) }} onSave={() => { window.dispatchEvent(new Event('knowledge-desk:save-active')) }}
         onZoom={() => { if (active !== undefined) dispatch({ type: 'zoom', id: active.id, workArea }) }} onCollapse={() => { if (active !== undefined) dispatch({ type: 'collapse', id: active.id }) }} onTile={() => { dispatch({ type: 'tile', workArea }) }} onRestoreLayout={() => { dispatch({ type: 'restore-layout', workArea }) }} hasRestorableLayout={desktop.layoutRestore !== undefined} trashCount={trash.length} onOpenTrash={openTrash} onEmptyTrash={() => { setConfirmEmptyTrash(true) }} onCleanUpDesktop={cleanUpDesktop} onFocusWindow={id => { dispatch({ type: 'focus', id }) }} onTimeline={() => { const id = valueOf(active?.payload, 'sessionId'); if (id !== undefined) openTimeline(id) }} onFocusAgent={focusOrOpenAgent} onStopAgent={id => { void adapter.cancel(id).catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onHelp={() => { setHelp(true) }} onAbout={() => { setAbout(true) }} />
       <div className="kd-desktop-items" aria-label="Desktop items">{shortcuts.map(item => <button key={item.id} draggable className="kd-desktop-item" data-selected={selectedShortcutIds.includes(item.id) || undefined} style={{ left: item.x, top: item.y }} title={item.kind === 'path' && item.pathType === 'directory' ? item.folderAction === 'workspace' ? `${item.path} · use as Workspace` : `${item.path} · browse in Finder` : item.kind === 'workspace' ? item.path : item.label}

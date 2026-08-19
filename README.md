@@ -159,7 +159,7 @@ On macOS, inactive/file-cache pages are excluded from active RAM so reusable cac
 
 Window bounds, z-order, zoom/collapse state, desktop aliases, reversible Agent archives, Trash, and Markdown preference survive reload. Terminal windows are the intentional exception because serialized windows cannot safely reattach live owner-scoped PTYs.
 
-The menu bar follows the active application: File and View expose only relevant commands, while Window switches between open windows and recent/running Agents. **Tile Windows** records the exact pre-tile geometry, and **Restore Previous Layout** restores it even after repeated tiling.
+The menu bar follows the active application: File and View expose only relevant commands, while Window switches between open windows and the most recently active Agents. **S7R → Settings…** controls whether Window shows 1–9 Agents (default 5). **Tile Windows** records the exact pre-tile geometry, and **Restore Previous Layout** restores it even after repeated tiling.
 
 Workspaces, Agents, Finder items, and individual Scrapbook cards can become desktop objects. Drag empty desktop space to marquee-select several aliases; then drag any selected item to move the group while preserving its layout. Opening an alias routes to its real object rather than a browser-local copy.
 
@@ -232,7 +232,7 @@ pnpm check
 pnpm pack
 ```
 
-`pnpm check` runs strict host/client TypeScript checks, 61 deterministic tests, and production host/client bundles. PDF.js and its worker implementation are embedded so Preview needs no CDN or runtime network dependency.
+`pnpm check` runs strict host/client TypeScript checks, 62 deterministic tests, and production host/client bundles. PDF.js and its worker implementation are embedded so Preview needs no CDN or runtime network dependency.
 
 Project references:
 

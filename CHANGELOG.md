@@ -10,6 +10,7 @@ All notable user-facing changes to S7R are documented here. The project follows 
 - Agent filters for Workspace scope and run state, plus recent/name/status sorting and Workspace grouping.
 - A reversible **Window → Tile Windows / Restore Previous Layout** workflow.
 - A live Agent switcher in the Window menu and keyboard navigation within menus.
+- A Settings control for showing 1–9 recent Agents in the Window menu (default 5).
 - A **New output** control when fresh streamed content arrives while reading earlier conversation history.
 
 ### Changed
@@ -17,6 +18,7 @@ All notable user-facing changes to S7R are documented here. The project follows 
 - File, View, and Window menus now follow the active application and avoid irrelevant or duplicate commands.
 - Knowledge Desk opens at a productive two-pane size and safely enlarges undersized restored launcher/Agent windows once.
 - Live output follows the bottom only while the reader is already there, so streaming no longer steals the scroll position.
+- The highlighted new-output button now uses a System 7 gray control with a black label, avoiding inverse-text rendering during active streaming.
 
 ## 0.7.0 - 2026-08-19
 

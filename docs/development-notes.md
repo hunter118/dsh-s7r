@@ -38,7 +38,7 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 The 0.8.0 release candidate has passed:
 
 - strict host and client TypeScript checks;
-- 15 Vitest files / 61 deterministic tests;
+- 15 Vitest files / 62 deterministic tests;
 - production host and self-contained client builds;
 - clean tarball installation into a disposable DSH Web profile;
 - root replacement, multi-window focus/move/resize/zoom/collapse/tile/reflow;

@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { desktopWorkArea } from '../src/desktop/resolution.ts'
+import { recentMenuAgents } from '../src/desktop/MenuBar.tsx'
 import { EMPTY_DESKTOP_STATE, windowReducer } from '../src/desktop/window-manager.ts'
 
 describe('window manager', () => {
   const area = desktopWorkArea(832, 624)
+
+  it('limits the Window menu to the configured most-recent Agents', () => {
+    const agents = [{ id: 'old', updatedAt: 1 }, { id: 'new', updatedAt: 3 }, { id: 'middle', updatedAt: 2 }]
+    expect(recentMenuAgents(agents, 2).map(agent => agent.id)).toEqual(['new', 'middle'])
+    expect(recentMenuAgents(agents, 99)).toHaveLength(3)
+  })
 
   it('opens, focuses, moves, and closes windows with stable z-order', () => {
     let state = windowReducer(EMPTY_DESKTOP_STATE, { type: 'open', appId: 'finder', title: 'Finder' })

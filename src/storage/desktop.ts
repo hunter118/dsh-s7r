@@ -25,7 +25,11 @@ export interface DesktopPersistence {
   archivedAgents: ArchivedAgentRecord[]
   trash: TrashedShortcutRecord[]
   renderMarkdown: boolean
+  agentMenuLimit: AgentMenuLimit
 }
+
+export type AgentMenuLimit = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+export const DEFAULT_AGENT_MENU_LIMIT: AgentMenuLimit = 5
 
 export const DESKTOP_STORAGE_KEY = 's7r.desktop.v1'
 
@@ -92,6 +96,7 @@ export const EMPTY_DESKTOP_PERSISTENCE: DesktopPersistence = Object.freeze({
   archivedAgents: [],
   trash: [],
   renderMarkdown: true,
+  agentMenuLimit: DEFAULT_AGENT_MENU_LIMIT,
 })
 
 export function readDesktopPersistence(storage: Pick<Storage, 'getItem'> | undefined): DesktopPersistence {
@@ -107,11 +112,14 @@ export function readDesktopPersistence(storage: Pick<Storage, 'getItem'> | undef
     if (value.version === 2 && (!Array.isArray(value.trash) || !value.trash.every(validTrashed) || typeof value.renderMarkdown !== 'boolean')) return EMPTY_DESKTOP_PERSISTENCE
     const trash = value.version === 2 ? value.trash as TrashedShortcutRecord[] : []
     const renderMarkdown = value.version === 2 ? value.renderMarkdown as boolean : true
+    const agentMenuLimit = value.version === 2 && Number.isInteger(value.agentMenuLimit) && Number(value.agentMenuLimit) >= 1 && Number(value.agentMenuLimit) <= 9
+      ? value.agentMenuLimit as AgentMenuLimit
+      : DEFAULT_AGENT_MENU_LIMIT
     const windows = state.windows.filter(window => window.appId !== 'terminal')
     const activeId = windows.some(window => window.id === state.activeId) ? state.activeId : undefined
     const liveIds = new Set(windows.map(window => window.id))
     const layoutRestore = state.layoutRestore?.filter(entry => liveIds.has(entry.id))
-    return { version: 2, desktop: { windows, nextId: state.nextId, nextZ: state.nextZ, ...(activeId === undefined ? {} : { activeId }), ...(layoutRestore === undefined || layoutRestore.length === 0 ? {} : { layoutRestore }) }, shortcuts: value.shortcuts, archivedAgents: value.archivedAgents, trash, renderMarkdown }
+    return { version: 2, desktop: { windows, nextId: state.nextId, nextZ: state.nextZ, ...(activeId === undefined ? {} : { activeId }), ...(layoutRestore === undefined || layoutRestore.length === 0 ? {} : { layoutRestore }) }, shortcuts: value.shortcuts, archivedAgents: value.archivedAgents, trash, renderMarkdown, agentMenuLimit }
   } catch {
     return EMPTY_DESKTOP_PERSISTENCE
   }

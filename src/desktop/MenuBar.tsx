@@ -15,6 +15,7 @@ export interface MenuBarProps {
   windows: readonly DesktopWindowState[]
   clock: string
   agents: readonly { id: string; title: string; status: 'running' | 'completed' | 'idle'; updatedAt: number }[]
+  agentMenuLimit: number
   onAccessory: (app: 'scrapbook' | 'clock' | 'puzzle' | 'monitor' | 'control-panel') => void
   onSettings: () => void
   onNewAgent: () => void
@@ -102,7 +103,7 @@ export function MenuBar(props: MenuBarProps) {
   const view: MenuItem[] = active === undefined
     ? [{ label: 'No Active View', disabled: true }]
     : [{ heading: true, label: active.title }, ...(refreshable ? [{ label: 'Refresh', action: () => { window.dispatchEvent(new Event('knowledge-desk:refresh-active')) } }] : []), ...(active.appId === 'knowledge-desk' && activeSessionId !== undefined ? [{ label: 'Open Timeline', action: props.onTimeline }] : []), ...(!refreshable && !(active.appId === 'knowledge-desk' && activeSessionId !== undefined) ? [{ label: 'No View Commands', disabled: true }] : [])]
-  const agents = [...props.agents].sort((left, right) => Number(right.status === 'running') - Number(left.status === 'running') || right.updatedAt - left.updatedAt).slice(0, 14)
+  const agents = recentMenuAgents(props.agents, props.agentMenuLimit)
   const windowItems: MenuItem[] = [
     { label: 'Zoom', disabled: active === undefined, action: props.onZoom },
     { label: 'Collapse', disabled: active === undefined, action: props.onCollapse },
@@ -120,4 +121,9 @@ export function MenuBar(props: MenuBarProps) {
   return <nav className="kd-menu-bar" aria-label="Global menu bar" onPointerDown={event => { event.stopPropagation() }}>
     <Menu id="desk" label="S7R" items={desk} open={open} setOpen={setOpen} /><Menu id="file" label="File" items={file} open={open} setOpen={setOpen} /><Menu id="edit" label="Edit" items={editItems} open={open} setOpen={setOpen} /><Menu id="view" label="View" items={view} open={open} setOpen={setOpen} /><Menu id="window" label="Window" items={windowItems} open={open} setOpen={setOpen} /><Menu id="special" label="Special" items={special} open={open} setOpen={setOpen} /><Menu id="help" label="Help" items={[{ label: 'S7R Guide…', action: props.onHelp }]} open={open} setOpen={setOpen} /><span className="kd-menu-clock">{props.clock}</span>
   </nav>
+}
+
+export function recentMenuAgents<T extends { updatedAt: number }>(agents: readonly T[], limit: number): T[] {
+  const safeLimit = Math.max(1, Math.min(9, Math.trunc(limit)))
+  return [...agents].sort((left, right) => right.updatedAt - left.updatedAt).slice(0, safeLimit)
 }
