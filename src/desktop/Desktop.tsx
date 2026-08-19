@@ -100,11 +100,13 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
   const [pendingFolderShortcut, setPendingFolderShortcut] = useState<{ item: Extract<S7RDragItem, { kind: 'path' }>; x: number; y: number } | null>(null)
   const [confirmEmptyTrash, setConfirmEmptyTrash] = useState(false)
   const [notices, setNotices] = useState<Array<{ id: string; sessionId: string; title: string }>>([])
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | undefined>(() => workspaces.recentWorkspaceId === undefined ? undefined : String(workspaces.recentWorkspaceId))
   const dirty = useRef(new Map<string, boolean>())
   const initialWindowOpened = useRef(restored.desktop.windows.length > 0)
   const completionBaseline = useRef(false)
   const previousCompleted = useRef(new Map<string, boolean>())
   const previousBaseFontSize = useRef(preferences.baseFontSize)
+  const productiveBoundsApplied = useRef(false)
   const desktopSize = resolveDesktopSize(preferences.resolution, viewport.width, viewport.height, preferences.pixelScale)
   const metrics = uiMetrics(preferences.baseFontSize)
   const visualWidth = desktopSize.width * preferences.pixelScale
@@ -113,6 +115,7 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
   const frameTop = Math.max(0, Math.floor((viewport.height - visualHeight) / 2))
   const workArea = useMemo(() => desktopWorkArea(desktopSize.width, desktopSize.height, preferences.baseFontSize), [desktopSize.height, desktopSize.width, preferences.baseFontSize])
   const active = desktop.windows.find(window => window.id === desktop.activeId)
+  const currentWorkspace = workspaces.items.find(item => String(item.workspaceId) === currentWorkspaceId)
   const importedWallpaper = wallpaperLibrary.items.find(item => item.id === wallpaperLibrary.selectedId) ?? null
   const wallpaperStyle = useMemo<CSSProperties>(() => {
     const tileOrCover = (dataUrl: string, tileSize: number): CSSProperties => preferences.wallpaperFit === 'cover'
@@ -152,6 +155,17 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
       previousBaseFontSize.current = preferences.baseFontSize
     }
   }, [preferences.baseFontSize, workArea])
+  useEffect(() => {
+    if (productiveBoundsApplied.current) return
+    productiveBoundsApplied.current = true
+    const ratio = preferences.baseFontSize / 10
+    const minimumWidth = Math.round(600 * ratio)
+    const minimumHeight = Math.round(390 * ratio)
+    for (const window of desktop.windows) {
+      if (window.appId !== 'knowledge-desk' || (window.bounds.width >= minimumWidth && window.bounds.height >= minimumHeight)) continue
+      dispatch({ type: 'resize', id: window.id, width: Math.max(window.bounds.width, minimumWidth), height: Math.max(window.bounds.height, minimumHeight), workArea })
+    }
+  }, [desktop.windows, preferences.baseFontSize, workArea])
   useEffect(() => { writeScrapbook(window.localStorage, cards) }, [cards])
   useEffect(() => { writeDesktopPersistence(window.localStorage, { version: 2, desktop, shortcuts, archivedAgents, trash, renderMarkdown }) }, [archivedAgents, desktop, renderMarkdown, shortcuts, trash])
   useEffect(() => {
@@ -170,6 +184,15 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     previousCompleted.current = next; completionBaseline.current = true
   }, [archivedAgents, sessions.byId, sessions.ids, sessions.phase])
   useEffect(() => {
+    setCurrentWorkspaceId(current => {
+      if (current !== undefined && workspaces.items.some(item => String(item.workspaceId) === current)) return current
+      const activeWorkspace = sessions.current === undefined ? undefined : workspaces.items.find(item => item.sessionIds.some(id => String(id) === String(sessions.current)))
+      return activeWorkspace === undefined
+        ? String(workspaces.items.find(item => item.workspaceId === workspaces.recentWorkspaceId)?.workspaceId ?? workspaces.items[0]?.workspaceId ?? '') || undefined
+        : String(activeWorkspace.workspaceId)
+    })
+  }, [sessions.current, workspaces.items, workspaces.recentWorkspaceId])
+  useEffect(() => {
     if (sessions.phase === 'pending' || initialWindowOpened.current) return
     initialWindowOpened.current = true
     dispatch({ type: 'open', appId: 'knowledge-desk', title: 'Knowledge Desk', payload: { browser: 'workspaces' }, workArea, baseFontSize: preferences.baseFontSize })
@@ -179,34 +202,39 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     dispatch({ type: 'open', appId, title, workArea, baseFontSize: preferences.baseFontSize, ...(payload === undefined ? {} : { payload }), ...(bounds === undefined ? {} : { bounds }), ...(resizable === undefined ? {} : { resizable }) })
   }, [preferences.baseFontSize, workArea])
   const focusOrOpenAgent = useCallback((sessionId: string) => {
+    const workspace = workspaces.items.find(item => item.sessionIds.some(id => String(id) === sessionId))
+    if (workspace !== undefined) setCurrentWorkspaceId(String(workspace.workspaceId))
     const existing = desktop.windows.find(window => window.appId === 'knowledge-desk' && valueOf(window.payload, 'sessionId') === sessionId)
     if (existing !== undefined) { dispatch({ type: 'focus', id: existing.id }); adapter.openSession(sessionId); return }
     const summary = sessions.byId[sessionId as keyof typeof sessions.byId]
     adapter.openSession(sessionId); open('knowledge-desk', summary?.displayTitle ?? `Agent ${sessionId.slice(-8)}`, { sessionId })
-  }, [adapter, desktop.windows, open, sessions.byId])
+  }, [adapter, desktop.windows, open, sessions.byId, workspaces.items])
   const chooseFolder = useCallback(async () => {
     const selected = await adapter.chooseWorkspace()
-    if (selected !== null) focusOrOpenAgent(selected.sessionId)
+    if (selected !== null) {
+      setCurrentWorkspaceId(String(selected.workspace.workspaceId))
+      focusOrOpenAgent(selected.sessionId)
+    }
   }, [adapter, focusOrOpenAgent])
   const openWorkspace = useCallback(async (workspaceId: string) => {
+    setCurrentWorkspaceId(workspaceId)
     focusOrOpenAgent(await adapter.openWorkspace(workspaceId))
   }, [adapter, focusOrOpenAgent])
-  const newAgent = useCallback(async () => {
-    const currentWorkspace = sessions.current === undefined ? undefined : workspaces.items.find(item => item.sessionIds.includes(sessions.current!))
-    const workspace = currentWorkspace ?? workspaces.items.find(item => item.workspaceId === workspaces.recentWorkspaceId) ?? workspaces.items[0]
+  const newAgent = useCallback(async (workspaceId?: string) => {
+    const workspace = workspaces.items.find(item => String(item.workspaceId) === (workspaceId ?? currentWorkspaceId))
     if (workspace === undefined) { await chooseFolder(); return }
     await openWorkspace(String(workspace.workspaceId))
-  }, [chooseFolder, openWorkspace, sessions.current, workspaces.items, workspaces.recentWorkspaceId])
+  }, [chooseFolder, currentWorkspaceId, openWorkspace, workspaces.items])
   const openAgentBrowser = useCallback(() => {
     const existing = desktop.windows.find(window => window.appId === 'knowledge-desk' && valueOf(window.payload, 'sessionId') === undefined)
     if (existing !== undefined) dispatch({ type: 'focus', id: existing.id })
     else open('knowledge-desk', 'Knowledge Desk', { browser: 'agents' })
   }, [desktop.windows, open])
   const openFinder = useCallback((sessionId?: string, path?: string) => {
-    const id = sessionId ?? (sessions.current === undefined ? undefined : String(sessions.current))
+    const id = sessionId ?? currentWorkspace?.sessionIds.map(String).find(candidate => sessions.byId[candidate as keyof typeof sessions.byId] !== undefined) ?? (sessions.current === undefined ? undefined : String(sessions.current))
     if (id === undefined) { openAgentBrowser(); return }
     open('finder', path === undefined ? 'Finder' : pathBasename(path), { sessionId: id, ...(path === undefined ? {} : { path }) })
-  }, [open, openAgentBrowser, sessions.current])
+  }, [currentWorkspace?.sessionIds, open, openAgentBrowser, sessions.byId, sessions.current])
   const openTerminal = useCallback((sessionId: string, cwd?: string) => { open('terminal', `Terminal — ${cwd === undefined ? sessionId.slice(0, 8) : pathBasename(cwd)}`, { sessionId, ...(cwd === undefined ? {} : { cwd }) }) }, [open])
   const openTerminalForSession = useCallback(async (id: string, cwd?: string) => {
     try {
@@ -274,7 +302,12 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
   const upstreamArchivedIds = workspaces.archivedSessionIds.map(id => String(id))
   const upstreamArchivedSet = new Set(upstreamArchivedIds)
   const localArchivedSet = new Set(archivedAgents.map(item => item.sessionId))
-  const allSessionRows = sessions.ids.filter(id => !upstreamArchivedSet.has(String(id))).map(id => ({ id: String(id), title: sessions.byId[id]?.displayTitle ?? String(id), running: sessions.byId[id]?.running ?? false, completed: sessions.byId[id]?.completed ?? false, updatedAt: sessions.byId[id]?.updatedAt ?? 0, ...(sessions.byId[id]?.cwd === undefined ? {} : { cwd: sessions.byId[id]!.cwd }) }))
+  const allSessionRows = sessions.ids.filter(id => !upstreamArchivedSet.has(String(id))).map(id => {
+    const sessionId = String(id)
+    const cwd = sessions.byId[id]?.cwd
+    const workspace = workspaces.items.find(item => item.sessionIds.some(candidate => String(candidate) === sessionId)) ?? (cwd === undefined ? undefined : workspaces.items.find(item => cwd === item.path || cwd.startsWith(`${item.path.replace(/[\\/]+$/, '')}/`)))
+    return { id: sessionId, title: sessions.byId[id]?.displayTitle ?? sessionId, running: sessions.byId[id]?.running ?? false, completed: sessions.byId[id]?.completed ?? false, updatedAt: sessions.byId[id]?.updatedAt ?? 0, ...(cwd === undefined ? {} : { cwd }), ...(workspace === undefined ? {} : { workspaceId: String(workspace.workspaceId), workspaceTitle: workspace.title }) }
+  })
   const sessionRows = allSessionRows.filter(row => !localArchivedSet.has(row.id))
   const workspaceRows = workspaces.items.map(item => ({ id: String(item.workspaceId), title: item.title, path: item.path, sessionIds: item.sessionIds.map(id => String(id)) }))
   const archiveSession = async (sessionId: string) => {
@@ -394,7 +427,7 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     const sessionId = valueOf(window.payload, 'sessionId') ?? (sessions.current === undefined ? undefined : String(sessions.current))
     const path = valueOf(window.payload, 'path')
     switch (window.appId) {
-      case 'knowledge-desk': return <KnowledgeDeskApp adapter={adapter} sessionId={valueOf(window.payload, 'sessionId')} sessions={sessionRows} workspaces={workspaceRows} archivedAgents={archivedAgents} upstreamArchivedIds={upstreamArchivedIds} preferences={preferences} renderMarkdown={renderMarkdown} onRenderMarkdownChange={setRenderMarkdown} onOpenSession={focusOrOpenAgent} onArchiveSession={archiveSession} onRestoreSession={restoreSession} onRenameSession={renameSession} onExportSession={exportSession} onCreateHandoff={createHandoff} onAddDesktopItem={putDesktopItem} onNewSession={newAgent} onChooseFolder={chooseFolder} onOpenWorkspace={openWorkspace} onOpenSettings={() => { open('settings', 'Settings') }} onOpenTimeline={openTimeline} onOpenFile={openFile} onAddScrap={addScrap} />
+      case 'knowledge-desk': return <KnowledgeDeskApp adapter={adapter} sessionId={valueOf(window.payload, 'sessionId')} sessions={sessionRows} workspaces={workspaceRows} currentWorkspaceId={currentWorkspaceId} archivedAgents={archivedAgents} upstreamArchivedIds={upstreamArchivedIds} preferences={preferences} renderMarkdown={renderMarkdown} onRenderMarkdownChange={setRenderMarkdown} onOpenSession={focusOrOpenAgent} onArchiveSession={archiveSession} onRestoreSession={restoreSession} onRenameSession={renameSession} onExportSession={exportSession} onCreateHandoff={createHandoff} onAddDesktopItem={putDesktopItem} onNewSession={newAgent} onChooseFolder={chooseFolder} onOpenWorkspace={openWorkspace} onSelectWorkspace={setCurrentWorkspaceId} onOpenSettings={() => { open('settings', 'Settings') }} onOpenTimeline={openTimeline} onOpenFile={openFile} onAddScrap={addScrap} />
       case 'finder': return <FinderApp adapter={adapter} sessionId={sessionId} initialPath={valueOf(window.payload, 'path')} onOpenFile={openFile} onOpenTerminal={(id, cwd) => { void openTerminalForSession(id, cwd) }} />
       case 'textedit': return sessionId === undefined || path === undefined ? <div className="kd-empty">No text document was supplied.</div> : <TextEditApp adapter={adapter} sessionId={sessionId} path={path} active={desktop.activeId === window.id} windowId={window.id} onDirtyChange={(id, isDirty) => { dirty.current.set(id, isDirty) }} onTitleChange={title => { dispatch({ type: 'retitle', id: window.id, title }) }} onRunInTerminal={(id, file) => { void openTerminalForSession(id, parentDirectory(file)) }} />
       case 'preview': return sessionId === undefined || path === undefined ? <div className="kd-empty">No preview document was supplied.</div> : <PreviewApp adapter={adapter} sessionId={sessionId} path={path} preferences={preferences} />
@@ -435,9 +468,9 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
       onPointerUp={event => { if (marquee?.pointerId === event.pointerId) { setMarquee(null); event.currentTarget.releasePointerCapture(event.pointerId) } }}
       onKeyDown={event => { const target = event.target as HTMLElement; if ((event.key === 'Delete' || event.key === 'Backspace') && selectedShortcutIds.length > 0 && !target.matches('input,textarea,[contenteditable="true"]')) { event.preventDefault(); moveToTrash(selectedShortcutIds) } }}
       onDragOver={event => { if (event.dataTransfer.types.includes('application/x-s7r-desktop-item')) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }} onDrop={dropOnDesktop} style={{ width: desktopSize.width, height: desktopSize.height, zoom: preferences.pixelScale, ...wallpaperStyle }} data-resolution={preferences.resolution} data-base-font={preferences.baseFontSize} data-pixel-scale={preferences.pixelScale}>
-      <MenuBar active={active} windows={desktop.windows} clock={now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} runningAgents={sessionRows.filter(row => row.running).map(row => ({ id: row.id, title: row.title }))}
+      <MenuBar active={active} windows={desktop.windows} clock={now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} agents={sessionRows.map(row => ({ id: row.id, title: row.title, status: row.running ? 'running' : row.completed ? 'completed' : 'idle', updatedAt: row.updatedAt }))}
         onAccessory={openAccessory} onSettings={() => { open('settings', 'Settings') }} onNewAgent={() => { void newAgent().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onChooseFolder={() => { void chooseFolder().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onOpenAgents={openAgentBrowser} onOpenFinder={() => { openFinder() }} onOpenTerminal={() => { void openTerminalForCurrent() }} onFind={() => { open('find', 'Find') }} onClose={() => { if (active !== undefined) requestClose(active.id) }} onSave={() => { window.dispatchEvent(new Event('knowledge-desk:save-active')) }}
-        onZoom={() => { if (active !== undefined) dispatch({ type: 'zoom', id: active.id, workArea }) }} onCollapse={() => { if (active !== undefined) dispatch({ type: 'collapse', id: active.id }) }} onTile={() => { dispatch({ type: 'tile', workArea }) }} trashCount={trash.length} onOpenTrash={openTrash} onEmptyTrash={() => { setConfirmEmptyTrash(true) }} onCleanUpDesktop={cleanUpDesktop} onFocusWindow={id => { dispatch({ type: 'focus', id }) }} onTimeline={() => { const id = valueOf(active?.payload, 'sessionId'); if (id !== undefined) openTimeline(id) }} onFocusAgent={focusOrOpenAgent} onHelp={() => { setHelp(true) }} onAbout={() => { setAbout(true) }} />
+        onZoom={() => { if (active !== undefined) dispatch({ type: 'zoom', id: active.id, workArea }) }} onCollapse={() => { if (active !== undefined) dispatch({ type: 'collapse', id: active.id }) }} onTile={() => { dispatch({ type: 'tile', workArea }) }} onRestoreLayout={() => { dispatch({ type: 'restore-layout', workArea }) }} hasRestorableLayout={desktop.layoutRestore !== undefined} trashCount={trash.length} onOpenTrash={openTrash} onEmptyTrash={() => { setConfirmEmptyTrash(true) }} onCleanUpDesktop={cleanUpDesktop} onFocusWindow={id => { dispatch({ type: 'focus', id }) }} onTimeline={() => { const id = valueOf(active?.payload, 'sessionId'); if (id !== undefined) openTimeline(id) }} onFocusAgent={focusOrOpenAgent} onStopAgent={id => { void adapter.cancel(id).catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onHelp={() => { setHelp(true) }} onAbout={() => { setAbout(true) }} />
       <div className="kd-desktop-items" aria-label="Desktop items">{shortcuts.map(item => <button key={item.id} draggable className="kd-desktop-item" data-selected={selectedShortcutIds.includes(item.id) || undefined} style={{ left: item.x, top: item.y }} title={item.kind === 'path' && item.pathType === 'directory' ? item.folderAction === 'workspace' ? `${item.path} · use as Workspace` : `${item.path} · browse in Finder` : item.kind === 'workspace' ? item.path : item.label}
         onPointerDown={event => { event.stopPropagation(); if (event.metaKey || event.shiftKey) setSelectedShortcutIds(current => current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id]); else if (!selectedShortcutIds.includes(item.id)) setSelectedShortcutIds([item.id]) }}
         onDragStart={event => { writeDragItem(event.dataTransfer, dragItemOf(item, selectedShortcutIds.includes(item.id) ? selectedShortcutIds : [item.id])) }} onClick={event => { event.stopPropagation() }} onDoubleClick={() => { openDesktopShortcut(item) }}><AppIcon app={item.kind === 'workspace' ? 'folder' : item.kind === 'agent' ? 'knowledge-desk' : item.kind === 'scrapbook' ? 'scrapbook' : item.pathType === 'directory' ? 'folder' : 'file'} /><span>{item.label}</span>{item.kind === 'path' && item.pathType === 'directory' ? <small>{item.folderAction === 'workspace' ? 'WORKSPACE' : 'FINDER'}</small> : null}</button>)}</div>

@@ -35,11 +35,19 @@ export interface DesktopWindowState {
   resizable?: boolean | undefined
 }
 
+export interface WindowLayoutEntry {
+  id: string
+  bounds: Bounds
+  restoreBounds?: Bounds | undefined
+  state: DesktopWindowState['state']
+}
+
 export interface DesktopState {
   windows: DesktopWindowState[]
   activeId?: string | undefined
   nextId: number
   nextZ: number
+  layoutRestore?: WindowLayoutEntry[] | undefined
 }
 
 export type WindowAction =
@@ -52,6 +60,7 @@ export type WindowAction =
   | { type: 'zoom'; id: string; workArea: Bounds }
   | { type: 'collapse'; id: string }
   | { type: 'tile'; workArea: Bounds }
+  | { type: 'restore-layout'; workArea: Bounds }
   | { type: 'reflow'; workArea: Bounds }
   | { type: 'rescale-ui'; ratio: number; oldMenuBarHeight: number; workArea: Bounds }
   | { type: 'retitle'; id: string; title: string }

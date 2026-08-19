@@ -21,7 +21,7 @@ DSH remains the source of truth. S7R does not copy conversations into its own ch
 | Area | What it does |
 | --- | --- |
 | **Workspaces** | Registers a real folder with DSH, remembers recent folders, and uses the selected Workspace as the filesystem boundary for Agents, Finder, Preview, TextEdit, Terminal, and Find. |
-| **Knowledge Desk** | Lists Workspaces and Agents together; searches names, paths, and IDs; creates and reopens Agents; renames, exports, archives, restores, or places them on the desktop. |
+| **Knowledge Desk** | Makes the current Workspace explicit; groups and filters Agents by Workspace/state; sorts by recency/name/status; and creates, reopens, renames, exports, archives, restores, or places Agents on the desktop. |
 | **Agent windows** | Streams real DSH output and reasoning, shows tools and attachments, accepts steering/cancellation, reloads persisted history, and optionally renders completed Markdown safely. |
 | **Context and Timeline** | Shows provider-reported context length and pressure, estimates content shares, requests compaction or a summary-carrying successor, and exposes the complete event stream with adjacent chunks folded into runs. |
 | **Files** | Provides Workspace-contained Finder, conflict-aware plain-text editing, image/PDF Preview, and portable path drops into Agents. Host paths are validated again on every request. |
@@ -44,10 +44,10 @@ DSH remains the source of truth. S7R does not copy conversations into its own ch
 
 ### Prebuilt release
 
-Download `dsh-s7r-0.7.0.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
+Download `dsh-s7r-0.8.0.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
 
 ```sh
-dsh plugin --profile web add ./dsh-s7r-0.7.0.tgz
+dsh plugin --profile web add ./dsh-s7r-0.8.0.tgz
 dsh --profile web --dump-config
 dsh web
 ```
@@ -94,7 +94,7 @@ Browser-owned shortcuts such as Command-N and Command-W are intentionally not ad
 
 ## Knowledge Desk and Agents
 
-Knowledge Desk is both a Workspace launcher and an Agent browser. Its Workspace side selects the folder that new work belongs to; its Agent side searches and manages the conversations already associated with that folder. Opening an existing result reconnects a window to the real DSH `SessionRuntime` rather than creating a second chat record.
+Knowledge Desk is both a Workspace launcher and an Agent browser. Its header and highlighted Workspace row make the current folder explicit, and **New Agent Here** always uses that selection. The Agent side defaults to the current Workspace, can broaden to all Workspaces, filter by run state, sort by recency/name/status, and group results under their Workspace. Opening an existing result reconnects a window to the real DSH `SessionRuntime` rather than creating a second chat record.
 
 ![An Agent conversation overlapping Knowledge Desk with the Context Inspector expanded](./docs/screenshots/s7r-agent.png)
 
@@ -114,6 +114,8 @@ Every Agent window keeps a compact single-line toolbar:
 - **Other…** provides rename, complete Markdown/JSON export, reversible archive, desktop placement, and a persistent Markdown-rendering toggle.
 
 Completed output can safely render headings, emphasis, inline/fenced code, lists, quotes, and tables. Streaming remains plain text until the message is complete, raw HTML is never injected, and LaTeX remains source text. The rendering switch is per browser profile and never rewrites stored conversation data. Color Emoji are displayed as monochrome pixel-font symbols or short text for visual consistency.
+
+Streaming follows the newest output only while the reader is already near the bottom. Scrolling upward keeps the reading position stable; a **New output ↓** button reports fresh content and returns to the live edge on demand.
 
 ## Workspaces, Finder, TextEdit, and Preview
 
@@ -156,6 +158,8 @@ On macOS, inactive/file-cache pages are excluded from active RAM so reusable cac
 ## Desktop workflow
 
 Window bounds, z-order, zoom/collapse state, desktop aliases, reversible Agent archives, Trash, and Markdown preference survive reload. Terminal windows are the intentional exception because serialized windows cannot safely reattach live owner-scoped PTYs.
+
+The menu bar follows the active application: File and View expose only relevant commands, while Window switches between open windows and recent/running Agents. **Tile Windows** records the exact pre-tile geometry, and **Restore Previous Layout** restores it even after repeated tiling.
 
 Workspaces, Agents, Finder items, and individual Scrapbook cards can become desktop objects. Drag empty desktop space to marquee-select several aliases; then drag any selected item to move the group while preserving its layout. Opening an alias routes to its real object rather than a browser-local copy.
 
@@ -228,7 +232,7 @@ pnpm check
 pnpm pack
 ```
 
-`pnpm check` runs strict host/client TypeScript checks, 59 deterministic tests, and production host/client bundles. PDF.js and its worker implementation are embedded so Preview needs no CDN or runtime network dependency.
+`pnpm check` runs strict host/client TypeScript checks, 61 deterministic tests, and production host/client bundles. PDF.js and its worker implementation are embedded so Preview needs no CDN or runtime network dependency.
 
 Project references:
 

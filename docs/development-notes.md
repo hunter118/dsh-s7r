@@ -21,6 +21,7 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 - **0.5** added system metrics, Puzzle, wallpaper import/processing, and the seamless Cat pattern.
 - **0.6** added the Workspace launcher, Agent search/rename/export/archive restore, global Find, integrated background monitor, Context Inspector, desktop aliases, state restore, and notifications.
 - **0.7** completed desktop multi-select/Trash, Agent side panels, safe Markdown rendering, relative path drops, toolbar reflow fixes, and Classic Dots defaults.
+- **0.8** made Workspace selection and Agent browsing explicit, added non-disruptive stream following, contextual menus, an Agent switcher, and reversible window tiling.
 
 ## Architecture decisions
 
@@ -34,14 +35,15 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 
 ## Verification summary
 
-The 0.7.0 release candidate has passed:
+The 0.8.0 release candidate has passed:
 
 - strict host and client TypeScript checks;
-- 14 Vitest files / 59 deterministic tests;
+- 15 Vitest files / 61 deterministic tests;
 - production host and self-contained client builds;
 - clean tarball installation into a disposable DSH Web profile;
 - root replacement, multi-window focus/move/resize/zoom/collapse/tile/reflow;
 - Workspace choice, Agent creation/reopen/rename/export/archive/restore;
+- current-Workspace Agent grouping/filtering/sorting and Workspace-targeted creation;
 - global Find at file-name, source, message, and all-event depth;
 - persisted Timeline, folded chunks, Monitor system/background views, and Context Inspector;
 - Finder navigation, version-guarded TextEdit saves, image/PDF Preview;
@@ -49,6 +51,8 @@ The 0.7.0 release candidate has passed:
 - Scrapbook, Clock, solvable Puzzle, wallpaper import, and seamless Cat tiling;
 - Fit Browser and fixed resolutions at 1×/2× with 10px/12px UI metrics;
 - desktop aliases, marquee multi-selection, group dragging, Trash restore, and state reload;
+- contextual menu contents, keyboard menu navigation, Agent switching, and exact post-tile layout restoration;
+- non-disruptive streamed-output following with an explicit new-output return control;
 - safe Markdown on/off and monochrome Emoji normalization;
 - clean browser diagnostics apart from expected restart warnings and PDF.js's bundled worker-fallback warning.
 

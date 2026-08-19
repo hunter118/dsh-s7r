@@ -1,4 +1,4 @@
-import type { AppId, Bounds, DesktopState, DesktopWindowState } from '../desktop/types.ts'
+import type { AppId, Bounds, DesktopState, DesktopWindowState, WindowLayoutEntry } from '../desktop/types.ts'
 
 export type DesktopShortcut =
   | { id: string; kind: 'workspace'; label: string; workspaceId: string; path: string; x: number; y: number }
@@ -55,6 +55,14 @@ function validWindow(value: unknown): value is DesktopWindowState {
     && (window.restoreBounds === undefined || validBounds(window.restoreBounds)) && validPayload(window.payload)
 }
 
+function validLayoutEntry(value: unknown): value is WindowLayoutEntry {
+  if (typeof value !== 'object' || value === null) return false
+  const entry = value as Partial<WindowLayoutEntry>
+  return typeof entry.id === 'string' && validBounds(entry.bounds)
+    && (entry.state === 'normal' || entry.state === 'zoomed' || entry.state === 'collapsed')
+    && (entry.restoreBounds === undefined || validBounds(entry.restoreBounds))
+}
+
 function validShortcut(value: unknown): value is DesktopShortcut {
   if (typeof value !== 'object' || value === null) return false
   const item = value as Record<string, unknown>
@@ -94,14 +102,16 @@ export function readDesktopPersistence(storage: Pick<Storage, 'getItem'> | undef
     const value = JSON.parse(raw) as Partial<Omit<DesktopPersistence, 'version'>> & { version?: 1 | 2 }
     if ((value.version !== 1 && value.version !== 2) || typeof value.desktop !== 'object' || value.desktop === null || !Array.isArray(value.shortcuts) || !Array.isArray(value.archivedAgents)) return EMPTY_DESKTOP_PERSISTENCE
     const state = value.desktop as Partial<DesktopState>
-    if (!Array.isArray(state.windows) || !state.windows.every(validWindow) || !finite(state.nextId) || !finite(state.nextZ) || (state.activeId !== undefined && typeof state.activeId !== 'string')) return EMPTY_DESKTOP_PERSISTENCE
+    if (!Array.isArray(state.windows) || !state.windows.every(validWindow) || !finite(state.nextId) || !finite(state.nextZ) || (state.activeId !== undefined && typeof state.activeId !== 'string') || (state.layoutRestore !== undefined && (!Array.isArray(state.layoutRestore) || !state.layoutRestore.every(validLayoutEntry)))) return EMPTY_DESKTOP_PERSISTENCE
     if (!value.shortcuts.every(validShortcut) || !value.archivedAgents.every(validArchived)) return EMPTY_DESKTOP_PERSISTENCE
     if (value.version === 2 && (!Array.isArray(value.trash) || !value.trash.every(validTrashed) || typeof value.renderMarkdown !== 'boolean')) return EMPTY_DESKTOP_PERSISTENCE
     const trash = value.version === 2 ? value.trash as TrashedShortcutRecord[] : []
     const renderMarkdown = value.version === 2 ? value.renderMarkdown as boolean : true
     const windows = state.windows.filter(window => window.appId !== 'terminal')
     const activeId = windows.some(window => window.id === state.activeId) ? state.activeId : undefined
-    return { version: 2, desktop: { windows, nextId: state.nextId, nextZ: state.nextZ, ...(activeId === undefined ? {} : { activeId }) }, shortcuts: value.shortcuts, archivedAgents: value.archivedAgents, trash, renderMarkdown }
+    const liveIds = new Set(windows.map(window => window.id))
+    const layoutRestore = state.layoutRestore?.filter(entry => liveIds.has(entry.id))
+    return { version: 2, desktop: { windows, nextId: state.nextId, nextZ: state.nextZ, ...(activeId === undefined ? {} : { activeId }), ...(layoutRestore === undefined || layoutRestore.length === 0 ? {} : { layoutRestore }) }, shortcuts: value.shortcuts, archivedAgents: value.archivedAgents, trash, renderMarkdown }
   } catch {
     return EMPTY_DESKTOP_PERSISTENCE
   }

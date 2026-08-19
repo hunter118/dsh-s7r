@@ -51,6 +51,7 @@ body { background: #777; }
 .kd-menu-item:hover:not(:disabled), .kd-menu-item:focus-visible:not(:disabled) { background: var(--s7-ink); color: var(--s7-white); outline: none; }
 .kd-menu-item:disabled, .s7-button:disabled { color: #777; text-shadow: 1px 1px 0 var(--s7-white); }
 .kd-menu-check { position: absolute; left: var(--s7-gap); }
+.kd-menu-section { min-height: var(--s7-menu-item-height); display: flex; align-items: center; padding: 1px calc(var(--s7-gap) * 2); font-family: var(--s7-mono); font-size: var(--s7-small-font); color: var(--s7-dark); background: var(--s7-mid); border-top: 1px solid var(--s7-white); border-bottom: 1px solid var(--s7-dark); }
 .kd-menu-separator { height: 1px; background: var(--s7-dark); border-bottom: 1px solid var(--s7-white); margin: 2px 0; }
 .kd-window { position: absolute; display: flex; flex-direction: column; min-width: var(--s7-min-window-width); min-height: var(--s7-title-height); background: var(--s7-surface); border: 1px solid var(--s7-ink); box-shadow: 1px 1px 0 var(--s7-white), 2px 2px 0 var(--s7-ink); overflow: clip; }
 .kd-window[data-active="false"] { box-shadow: 1px 1px 0 var(--s7-dark); }

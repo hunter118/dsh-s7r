@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { AssistantBlock, ConversationNode, ConversationSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
 import type { DshClientAdapter } from '../../dsh-compat/client.ts'
 import type { ContextInspectionView } from '../../dsh-compat/protocol.ts'
@@ -7,15 +7,17 @@ import type { ArchivedAgentRecord } from '../../storage/desktop.ts'
 import { readDragItem, relativePathReference, writeDragItem, type S7RDragItem } from '../../desktop/drag.ts'
 import { AuthenticImage } from '../../display/AuthenticImage.tsx'
 import { pixelizeEmoji } from '../../display/pixel-emoji.ts'
-import { SystemButton, SystemCheckbox, SystemDialog, SystemInput, SystemStatusBar, SystemTextArea } from '../../system7/primitives.tsx'
+import { SystemButton, SystemCheckbox, SystemDialog, SystemInput, SystemSelect, SystemStatusBar, SystemTextArea } from '../../system7/primitives.tsx'
 import { SessionSnapshot, errorMessage, formatContextUsage, formatTime } from '../common.tsx'
 import { MarkdownText } from './MarkdownText.tsx'
+import { isNearOutputEnd } from './follow-output.ts'
 
 interface KnowledgeDeskAppProps {
   adapter: DshClientAdapter
   sessionId?: string | undefined
-  sessions: readonly { id: string; title: string; running: boolean; completed?: boolean; cwd?: string; updatedAt: number }[]
+  sessions: readonly { id: string; title: string; running: boolean; completed?: boolean; cwd?: string; updatedAt: number; workspaceId?: string; workspaceTitle?: string }[]
   workspaces: readonly { id: string; title: string; path: string; sessionIds: string[] }[]
+  currentWorkspaceId?: string | undefined
   archivedAgents: readonly ArchivedAgentRecord[]
   upstreamArchivedIds: readonly string[]
   preferences: DisplayPreferences
@@ -28,9 +30,10 @@ interface KnowledgeDeskAppProps {
   onExportSession: (sessionId: string, format: 'markdown' | 'json', title: string) => Promise<void>
   onCreateHandoff: (sessionId: string, summary: string) => Promise<void>
   onAddDesktopItem: (item: S7RDragItem) => void
-  onNewSession: () => Promise<void>
+  onNewSession: (workspaceId?: string) => Promise<void>
   onChooseFolder: () => Promise<void>
   onOpenWorkspace: (workspaceId: string) => Promise<void>
+  onSelectWorkspace: (workspaceId: string) => void
   onOpenSettings: () => void
   onOpenTimeline: (sessionId: string) => void
   onOpenFile: (sessionId: string, path: string) => void
@@ -145,20 +148,47 @@ const ConversationBody = memo(function ConversationBody({ snapshot, adapter, ses
   onOpenFile: (path: string) => void
   onAddScrap: (title: string, body: string, kind?: 'text' | 'code' | 'reference') => void
 }) {
-  const bottomRef = useRef<HTMLDivElement | null>(null)
-  const priorCount = useRef(0)
-  useEffect(() => {
-    if (snapshot.nodes.length >= priorCount.current) bottomRef.current?.scrollIntoView({ block: 'end' })
-    priorCount.current = snapshot.nodes.length
-  }, [snapshot.nodes.length, snapshot.partial])
-  return <div className="kd-conversation kd-scroll">
-    {snapshot.hasMore ? <div className="kd-load-older"><SystemButton disabled={snapshot.loadingOlder} onClick={() => { void adapter.loadOlder(sessionId) }}>{snapshot.loadingOlder ? 'Loading…' : 'Load Earlier History'}</SystemButton></div> : null}
-    {snapshot.openState === 'loading' ? <div className="kd-empty">Opening complete session history…</div> : null}
-    {snapshot.openState === 'error' ? <div className="s7-inline-error">{snapshot.openError?.message ?? 'History failed to open.'}</div> : null}
-    {snapshot.nodes.map(node => <NodeView key={`${node.kind}:${node.seq}`} node={node} adapter={adapter} sessionId={sessionId} preferences={preferences} renderMarkdown={renderMarkdown} onOpenFile={onOpenFile} onAddScrap={onAddScrap} />)}
-    {snapshot.partial !== null ? <article className="kd-message kd-message-assistant kd-streaming"><header><span className="kd-role">AGENT</span><span>streaming…</span></header>{snapshot.partial.blocks.map((block, index) => <AssistantBlockView key={index} block={block} adapter={adapter} sessionId={sessionId} preferences={preferences} renderMarkdown={false} onOpenFile={onOpenFile} />)}</article> : null}
-    {snapshot.runningCalls.map(call => <details className="kd-message kd-message-tool" open key={call.callId}><summary>Running tool: {call.name}</summary><pre>{pixelizeEmoji(call.argsRaw)}</pre></details>)}
-    <div ref={bottomRef} />
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const lastOutputVersion = useRef<string | null>(null)
+  const followingRef = useRef(true)
+  const [following, setFollowing] = useState(true)
+  const [newOutput, setNewOutput] = useState(false)
+  const lastNode = snapshot.nodes.at(-1)
+  const partialSize = snapshot.partial?.blocks.reduce((total, block) => total + (block.kind === 'text' || block.kind === 'reasoning' ? block.text.length : block.kind === 'tool-call' ? block.argsRaw.length : 1), 0) ?? 0
+  const callsVersion = snapshot.runningCalls.map(call => `${call.callId}:${call.argsRaw.length}`).join(',')
+  const outputVersion = `${lastNode?.seq ?? 'none'}:${snapshot.partial === null ? 'done' : partialSize}:${callsVersion}`
+  useLayoutEffect(() => {
+    const element = scrollRef.current
+    if (element === null) return
+    if (lastOutputVersion.current === null || followingRef.current) {
+      element.scrollTop = element.scrollHeight
+      setNewOutput(false)
+    } else if (lastOutputVersion.current !== outputVersion) setNewOutput(true)
+    lastOutputVersion.current = outputVersion
+  }, [outputVersion])
+  const followLatest = () => {
+    const element = scrollRef.current
+    if (element !== null) element.scrollTop = element.scrollHeight
+    followingRef.current = true
+    setFollowing(true)
+    setNewOutput(false)
+  }
+  return <div className="kd-conversation-shell">
+    <div ref={scrollRef} className="kd-conversation kd-scroll" onScroll={event => {
+      const next = isNearOutputEnd(event.currentTarget)
+      if (next === followingRef.current) return
+      followingRef.current = next
+      setFollowing(next)
+      if (next) setNewOutput(false)
+    }}>
+      {snapshot.hasMore ? <div className="kd-load-older"><SystemButton disabled={snapshot.loadingOlder} onClick={() => { void adapter.loadOlder(sessionId) }}>{snapshot.loadingOlder ? 'Loading…' : 'Load Earlier History'}</SystemButton></div> : null}
+      {snapshot.openState === 'loading' ? <div className="kd-empty">Opening complete session history…</div> : null}
+      {snapshot.openState === 'error' ? <div className="s7-inline-error">{snapshot.openError?.message ?? 'History failed to open.'}</div> : null}
+      {snapshot.nodes.map(node => <NodeView key={`${node.kind}:${node.seq}`} node={node} adapter={adapter} sessionId={sessionId} preferences={preferences} renderMarkdown={renderMarkdown} onOpenFile={onOpenFile} onAddScrap={onAddScrap} />)}
+      {snapshot.partial !== null ? <article className="kd-message kd-message-assistant kd-streaming"><header><span className="kd-role">AGENT</span><span>streaming…</span></header>{snapshot.partial.blocks.map((block, index) => <AssistantBlockView key={index} block={block} adapter={adapter} sessionId={sessionId} preferences={preferences} renderMarkdown={false} onOpenFile={onOpenFile} />)}</article> : null}
+      {snapshot.runningCalls.map(call => <details className="kd-message kd-message-tool" open key={call.callId}><summary>Running tool: {call.name}</summary><pre>{pixelizeEmoji(call.argsRaw)}</pre></details>)}
+    </div>
+    {following ? null : <SystemButton className={`kd-follow-output ${newOutput ? 'kd-follow-output-new' : ''}`} onClick={followLatest}>{newOutput ? 'New output ↓' : 'Return to latest ↓'}</SystemButton>}
   </div>
 })
 
@@ -281,7 +311,7 @@ function BoundKnowledgeDesk({ adapter, sessionId, sessions, preferences, renderM
             onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send() } }} />
           <SystemButton type="submit" disabled={draft.trim() === '' || sending || snapshot.removed}>{snapshot.running ? 'Steer' : 'Send'}</SystemButton>
         </form>
-        <SystemStatusBar>{sessionId} · {formatContextUsage(inspection?.context) === undefined ? '' : `Context ${formatContextUsage(inspection?.context)} · `}{snapshot.nodes.length} visible records · {snapshot.hasMore ? 'earlier history available' : 'history start loaded'}</SystemStatusBar>
+        <SystemStatusBar>{sessionRow?.workspaceTitle ?? 'Unknown Workspace'} · {formatContextUsage(inspection?.context) === undefined ? '' : `Context ${formatContextUsage(inspection?.context)} · `}{snapshot.nodes.length} records · ID {sessionId.slice(-8)}</SystemStatusBar>
         {confirmArchive ? <SystemDialog title="Archive Agent" onClose={() => { if (!sending) setConfirmArchive(false) }}><p>Hide this Agent and conversation in S7R’s reversible archive?</p><p className="kd-muted">The DSH session and log remain unchanged. You can restore it later from Knowledge Desk.</p><div className="kd-dialog-actions"><SystemButton disabled={sending} onClick={() => { setConfirmArchive(false) }}>Cancel</SystemButton><SystemButton disabled={sending} onClick={() => { setSending(true); setError(null); void onArchiveSession(sessionId).catch(reason => { setSending(false); setError(errorMessage(reason)); setConfirmArchive(false) }) }}>Archive</SystemButton></div></SystemDialog> : null}
         {renameOpen ? <SystemDialog title="Rename Agent" onClose={() => { setRenameOpen(false) }}><label htmlFor="kd-agent-rename">Agent name</label><SystemInput id="kd-agent-rename" value={renameDraft} onChange={event => { setRenameDraft(event.currentTarget.value) }} autoFocus /><div className="kd-dialog-actions"><SystemButton onClick={() => { setRenameOpen(false) }}>Cancel</SystemButton><SystemButton disabled={renameDraft.trim() === ''} onClick={() => { void onRenameSession(sessionId, renameDraft).then(() => { setRenameOpen(false) }, reason => { setError(errorMessage(reason)); setRenameOpen(false) }) }}>Rename</SystemButton></div></SystemDialog> : null}
         {exportOpen ? <SystemDialog title="Export Agent" onClose={() => { setExportOpen(false) }}><p>Export the complete persisted event history, including records outside the currently loaded page.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setExportOpen(false) }}>Cancel</SystemButton><SystemButton onClick={() => { void onExportSession(sessionId, 'json', sessionRow?.title ?? `Agent ${sessionId.slice(-8)}`).then(() => { setExportOpen(false) }, reason => { setError(errorMessage(reason)); setExportOpen(false) }) }}>JSON</SystemButton><SystemButton onClick={() => { void onExportSession(sessionId, 'markdown', sessionRow?.title ?? `Agent ${sessionId.slice(-8)}`).then(() => { setExportOpen(false) }, reason => { setError(errorMessage(reason)); setExportOpen(false) }) }}>Markdown</SystemButton></div></SystemDialog> : null}
@@ -296,6 +326,9 @@ function SessionPicker(props: KnowledgeDeskAppProps) {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<'active' | 'archived'>('active')
   const [query, setQuery] = useState('')
+  const [scope, setScope] = useState<'current' | 'all'>('current')
+  const [status, setStatus] = useState<'all' | 'running' | 'idle' | 'done'>('all')
+  const [sort, setSort] = useState<'recent' | 'name' | 'status'>('recent')
   const [pendingArchive, setPendingArchive] = useState<string | null>(null)
   const [pendingRename, setPendingRename] = useState<string | null>(null)
   const [renameDraft, setRenameDraft] = useState('')
@@ -308,25 +341,45 @@ function SessionPicker(props: KnowledgeDeskAppProps) {
     setBusy(true); setError(null)
     try { await operation() } catch (reason) { setError(errorMessage(reason)) } finally { setBusy(false) }
   }
-  const filteredSessions = props.sessions.filter(session => `${session.title}\n${session.cwd ?? ''}\n${session.id}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
-  const filteredArchived = props.archivedAgents.filter(session => `${session.title}\n${session.cwd ?? ''}\n${session.sessionId}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()))
+  const currentWorkspace = props.workspaces.find(workspace => workspace.id === props.currentWorkspaceId)
+  const queryLower = query.toLocaleLowerCase()
+  const filteredSessions = props.sessions
+    .filter(session => scope === 'all' || currentWorkspace === undefined || session.workspaceId === currentWorkspace.id)
+    .filter(session => `${session.title}\n${session.cwd ?? ''}\n${session.id}`.toLocaleLowerCase().includes(queryLower))
+    .filter(session => status === 'all' || (status === 'running' ? session.running : status === 'done' ? session.completed === true : !session.running && session.completed !== true))
+    .sort((left, right) => sort === 'name'
+      ? left.title.localeCompare(right.title)
+      : sort === 'status'
+        ? Number(right.running) - Number(left.running) || Number(right.completed === true) - Number(left.completed === true) || right.updatedAt - left.updatedAt
+        : right.updatedAt - left.updatedAt)
+  const workspaceForArchive = (cwd: string | undefined) => cwd === undefined ? undefined : props.workspaces.find(workspace => cwd === workspace.path || cwd.startsWith(`${workspace.path.replace(/[\\/]+$/, '')}/`))
+  const filteredArchived = props.archivedAgents
+    .filter(session => scope === 'all' || currentWorkspace === undefined || workspaceForArchive(session.cwd)?.id === currentWorkspace.id)
+    .filter(session => `${session.title}\n${session.cwd ?? ''}\n${session.sessionId}`.toLocaleLowerCase().includes(queryLower))
+    .sort((left, right) => right.archivedAt - left.archivedAt)
+  const activeGroups = scope === 'current' && currentWorkspace !== undefined
+    ? [{ id: currentWorkspace.id, title: currentWorkspace.title, sessions: filteredSessions }]
+    : [...props.workspaces.map(workspace => ({ id: workspace.id, title: workspace.title, sessions: filteredSessions.filter(session => session.workspaceId === workspace.id) })), { id: 'unassigned', title: 'Other / Unassigned', sessions: filteredSessions.filter(session => session.workspaceId === undefined || !props.workspaces.some(workspace => workspace.id === session.workspaceId)) }].filter(group => group.sessions.length > 0)
   const selectedRow = props.sessions.find(session => session.id === selectedSession)
+  useEffect(() => {
+    if (selectedSession !== null && !filteredSessions.some(session => session.id === selectedSession)) setSelectedSession(filteredSessions[0]?.id ?? null)
+  }, [filteredSessions, selectedSession])
   return <div className="kd-session-picker">
     <section className="kd-launcher-top">
       <div className="kd-welcome-mark">KD</div>
-      <div><h2>Choose a Folder First</h2><p>A folder becomes the DSH workspace and the filesystem boundary for its Agents, Finder, and Terminal.</p></div>
+      <div className="kd-current-workspace"><small>{currentWorkspace === undefined ? 'NO CURRENT WORKSPACE' : 'CURRENT WORKSPACE'}</small><h2>{currentWorkspace?.title ?? 'Choose a Folder First'}</h2><p title={currentWorkspace?.path}>{currentWorkspace?.path ?? 'A folder becomes the filesystem boundary for its Agents, Finder, and Terminal.'}</p></div>
       <SystemButton disabled={busy} onClick={() => { void run(props.onChooseFolder) }}>Choose Folder…</SystemButton>
       <SystemButton onClick={props.onOpenSettings}>API Key Settings…</SystemButton>
     </section>
     {error === null ? null : <div className="s7-inline-error">{error}</div>}
     <div className="kd-launcher-columns">
-      <section className="kd-launcher-pane"><header><strong>Workspaces</strong><span className="kd-spacer" /><SystemButton disabled={busy || props.workspaces.length === 0} onClick={() => { void run(props.onNewSession) }}>New Agent</SystemButton></header>
-        <ul className="kd-list kd-scroll">{props.workspaces.map(workspace => <li draggable onDragStart={event => { writeDragItem(event.dataTransfer, { kind: 'workspace', label: workspace.title, workspaceId: workspace.id, path: workspace.path }) }} className="kd-list-row kd-workspace-row" key={workspace.id} onDoubleClick={() => { void run(async () => { await props.onOpenWorkspace(workspace.id) }) }}><span className="s7-app-icon s7-app-icon-folder" /><span><strong>{workspace.title}</strong><small>{workspace.path} · {workspace.sessionIds.length} Agents</small></span><span className="kd-spacer" /><SystemButton onClick={() => { props.onAddDesktopItem({ kind: 'workspace', label: workspace.title, workspaceId: workspace.id, path: workspace.path }) }}>Desktop</SystemButton><SystemButton disabled={busy} onClick={() => { void run(async () => { await props.onOpenWorkspace(workspace.id) }) }}>Open</SystemButton></li>)}
+      <section className="kd-launcher-pane"><header><strong>Workspaces</strong><span className="kd-spacer" /><SystemButton disabled={busy || currentWorkspace === undefined} title={currentWorkspace === undefined ? 'Choose a Workspace first.' : `Create in ${currentWorkspace.title}`} onClick={() => { void run(async () => { await props.onNewSession(currentWorkspace?.id) }) }}>New Agent Here</SystemButton></header>
+        <ul className="kd-list kd-scroll">{props.workspaces.map(workspace => <li draggable onDragStart={event => { writeDragItem(event.dataTransfer, { kind: 'workspace', label: workspace.title, workspaceId: workspace.id, path: workspace.path }) }} className="kd-list-row kd-workspace-row" data-selected={currentWorkspace?.id === workspace.id || undefined} key={workspace.id} onClick={() => { props.onSelectWorkspace(workspace.id) }} onDoubleClick={() => { void run(async () => { await props.onOpenWorkspace(workspace.id) }) }}><span className="s7-app-icon s7-app-icon-folder" /><span><strong>{workspace.title}{currentWorkspace?.id === workspace.id ? ' · Current' : ''}</strong><small>{workspace.path} · {props.sessions.filter(session => session.workspaceId === workspace.id).length} Agents</small></span><span className="kd-spacer" /><SystemButton onClick={() => { props.onAddDesktopItem({ kind: 'workspace', label: workspace.title, workspaceId: workspace.id, path: workspace.path }) }}>Desktop</SystemButton><SystemButton disabled={busy} onClick={() => { void run(async () => { await props.onOpenWorkspace(workspace.id) }) }}>Open</SystemButton></li>)}
           {props.workspaces.length === 0 ? <li className="kd-empty">No folders registered yet.</li> : null}</ul>
       </section>
       <section className="kd-launcher-pane"><header><strong>Agents</strong><SystemButton data-pressed={view === 'active' || undefined} onClick={() => { setView('active') }}>Active</SystemButton><SystemButton data-pressed={view === 'archived' || undefined} onClick={() => { setView('archived') }}>Archived ({props.archivedAgents.length})</SystemButton><span className="kd-spacer" /></header>
-        <div className="kd-agent-search"><SystemInput aria-label="Search Agents" value={query} placeholder="Search name, path, or ID…" onChange={event => { setQuery(event.currentTarget.value) }} /></div>
-        {view === 'active' ? <><ul className="kd-list kd-scroll">{filteredSessions.map(session => <li draggable onDragStart={event => { writeDragItem(event.dataTransfer, { kind: 'agent', label: session.title, sessionId: session.id, ...(session.cwd === undefined ? {} : { cwd: session.cwd }) }) }} className="kd-list-row" key={session.id} data-selected={selectedSession === session.id} onClick={() => { setSelectedSession(session.id) }} onDoubleClick={() => { props.onOpenSession(session.id) }}><span className={`kd-led ${session.running ? 'kd-led-running' : ''}`} /><span><strong>{session.title}{session.completed ? ' · Done' : ''}</strong><small>{session.cwd ?? session.id.slice(0, 10)}</small></span></li>)}
+        <div className="kd-agent-search"><SystemInput aria-label="Search Agents" value={query} placeholder="Search name, path, or ID…" onChange={event => { setQuery(event.currentTarget.value) }} /><SystemSelect aria-label="Workspace scope" value={scope} onChange={event => { setScope(event.currentTarget.value as 'current' | 'all') }}><option value="current">Current</option><option value="all">All Workspaces</option></SystemSelect><SystemSelect aria-label="Agent status" value={status} onChange={event => { setStatus(event.currentTarget.value as typeof status) }}><option value="all">All Status</option><option value="running">Running</option><option value="idle">Idle</option><option value="done">Completed</option></SystemSelect><SystemSelect aria-label="Agent sorting" value={sort} onChange={event => { setSort(event.currentTarget.value as typeof sort) }}><option value="recent">Recent</option><option value="name">Name</option><option value="status">Status</option></SystemSelect></div>
+        {view === 'active' ? <><ul className="kd-list kd-scroll">{activeGroups.map(group => <Fragment key={group.id}><li className="kd-list-heading"><span>{group.title}</span><small>{group.sessions.length}</small></li>{group.sessions.map(session => <li draggable onDragStart={event => { writeDragItem(event.dataTransfer, { kind: 'agent', label: session.title, sessionId: session.id, ...(session.cwd === undefined ? {} : { cwd: session.cwd }) }) }} className="kd-list-row kd-agent-row" key={session.id} data-selected={selectedSession === session.id} onClick={() => { setSelectedSession(session.id) }} onDoubleClick={() => { props.onOpenSession(session.id) }}><span className={`kd-led ${session.running ? 'kd-led-running' : ''}`} /><span><strong>{session.title}</strong><small>{session.running ? 'Running' : session.completed ? 'Completed' : 'Idle'} · {session.updatedAt > 0 ? new Date(session.updatedAt).toLocaleString() : session.id.slice(0, 10)}</small></span></li>)}</Fragment>)}
           {filteredSessions.length === 0 ? <li className="kd-empty">No matching active Agents.</li> : null}</ul><div className="kd-launcher-actions"><SystemButton disabled={selectedRow === undefined} onClick={() => { if (selectedRow !== undefined) props.onAddDesktopItem({ kind: 'agent', label: selectedRow.title, sessionId: selectedRow.id, ...(selectedRow.cwd === undefined ? {} : { cwd: selectedRow.cwd }) }) }}>Desktop</SystemButton><SystemButton disabled={selectedRow === undefined} onClick={() => { if (selectedRow !== undefined) { setRenameDraft(selectedRow.title); setPendingRename(selectedRow.id) } }}>Rename…</SystemButton><SystemButton disabled={selectedRow === undefined} onClick={() => { if (selectedRow !== undefined) setPendingExport(selectedRow.id) }}>Export…</SystemButton><SystemButton disabled={selectedRow === undefined || selectedRow.running || busy} onClick={() => { if (selectedRow !== undefined) setPendingArchive(selectedRow.id) }}>Archive…</SystemButton><SystemButton disabled={selectedRow === undefined} onClick={() => { if (selectedRow !== undefined) props.onOpenSession(selectedRow.id) }}>Open</SystemButton></div></>
           : <><ul className="kd-list kd-scroll">{filteredArchived.map(session => <li className="kd-list-row" key={session.sessionId}><span className="kd-led" /><span><strong>{session.title}</strong><small>{session.cwd ?? session.sessionId.slice(0, 10)} · {new Date(session.archivedAt).toLocaleDateString()}</small></span><span className="kd-spacer" /><SystemButton onClick={() => { props.onRestoreSession(session.sessionId) }}>Restore</SystemButton><SystemButton onClick={() => { setPendingExport(session.sessionId) }}>Export…</SystemButton></li>)}{filteredArchived.length === 0 ? <li className="kd-empty">No matching archived Agents.</li> : null}</ul>{props.upstreamArchivedIds.length === 0 ? null : <p className="kd-upstream-archive">{props.upstreamArchivedIds.length} older DSH-native archive entries are retained upstream. rc.7 exposes no restore operation for them.</p>}</>}
       </section>

@@ -77,6 +77,10 @@ describe('versioned local persistence', () => {
         activeId: 'window-1',
         nextId: 3,
         nextZ: 4,
+        layoutRestore: [
+          { id: 'window-1', bounds: { x: 10, y: 24, width: 400, height: 260 }, state: 'normal' },
+          { id: 'window-2', bounds: { x: 30, y: 44, width: 340, height: 200 }, state: 'normal' },
+        ],
       },
       shortcuts: [
         { id: shortcutId('workspace', 'workspace-1'), kind: 'workspace', label: 'Project', workspaceId: 'workspace-1', path: '/Projects/one', x: 12, y: 34 },
@@ -95,6 +99,7 @@ describe('versioned local persistence', () => {
     expect(restored.renderMarkdown).toBe(false)
     expect(restored.desktop.windows.map(window => window.appId)).toEqual(['knowledge-desk'])
     expect(restored.desktop.activeId).toBe('window-1')
+    expect(restored.desktop.layoutRestore?.map(entry => entry.id)).toEqual(['window-1'])
   })
 
   it('migrates version 1 desktop state with empty Trash and Markdown enabled', () => {

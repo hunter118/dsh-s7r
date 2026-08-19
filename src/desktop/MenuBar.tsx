@@ -7,13 +7,14 @@ interface MenuItem {
   checked?: boolean
   action?: () => void
   separator?: true
+  heading?: true
 }
 
 export interface MenuBarProps {
   active?: DesktopWindowState | undefined
   windows: readonly DesktopWindowState[]
   clock: string
-  runningAgents: readonly { id: string; title: string }[]
+  agents: readonly { id: string; title: string; status: 'running' | 'completed' | 'idle'; updatedAt: number }[]
   onAccessory: (app: 'scrapbook' | 'clock' | 'puzzle' | 'monitor' | 'control-panel') => void
   onSettings: () => void
   onNewAgent: () => void
@@ -27,6 +28,8 @@ export interface MenuBarProps {
   onZoom: () => void
   onCollapse: () => void
   onTile: () => void
+  onRestoreLayout: () => void
+  hasRestorableLayout: boolean
   trashCount: number
   onOpenTrash: () => void
   onEmptyTrash: () => void
@@ -34,16 +37,26 @@ export interface MenuBarProps {
   onFocusWindow: (id: string) => void
   onTimeline: () => void
   onFocusAgent: (id: string) => void
+  onStopAgent: (id: string) => void
   onHelp: () => void
   onAbout: () => void
 }
 
 function Menu({ id, label, items, open, setOpen }: { id: string; label: React.ReactNode; items: MenuItem[]; open: string | null; setOpen: (id: string | null) => void }) {
   const active = open === id
-  return <div className="kd-menu-wrap"><button className={`kd-menu-button ${id === 'desk' ? 'kd-menu-logo' : ''}`} data-open={active} onPointerDown={event => { event.stopPropagation(); setOpen(active ? null : id) }}>{label}</button>
-    {active ? <div className="kd-menu-popover">{items.map((item, index) => item.separator
+  const focusItem = (edge: 'first' | 'last' = 'first') => { window.setTimeout(() => { const buttons = document.querySelectorAll<HTMLButtonElement>(`[data-menu="${id}"] .kd-menu-item:not(:disabled)`); buttons[edge === 'first' ? 0 : buttons.length - 1]?.focus() }, 0) }
+  return <div className="kd-menu-wrap" data-menu={id}><button className={`kd-menu-button ${id === 'desk' ? 'kd-menu-logo' : ''}`} aria-haspopup="menu" aria-expanded={active} data-open={active} onPointerDown={event => { event.stopPropagation(); setOpen(active ? null : id) }} onKeyDown={event => { if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(id); focusItem() } }}>{label}</button>
+    {active ? <div className="kd-menu-popover" role="menu" onKeyDown={event => {
+      const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('.kd-menu-item:not(:disabled)')]
+      const index = items.indexOf(document.activeElement as HTMLButtonElement)
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); items[(index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus() }
+      else if (event.key === 'Home') { event.preventDefault(); items[0]?.focus() }
+      else if (event.key === 'End') { event.preventDefault(); items.at(-1)?.focus() }
+      else if (event.key === 'Escape') { event.preventDefault(); setOpen(null) }
+    }}>{items.map((item, index) => item.separator
       ? <div className="kd-menu-separator" key={index} />
-      : <button className="kd-menu-item" key={`${item.label}-${index}`} disabled={item.disabled} onClick={() => { setOpen(null); item.action?.() }}><span className="kd-menu-check">{item.checked ? '✓' : ''}</span>{item.label}</button>)}</div> : null}
+      : item.heading ? <div className="kd-menu-section" key={`${item.label}-${index}`}>{item.label}</div>
+        : <button className="kd-menu-item" role="menuitem" key={`${item.label}-${index}`} disabled={item.disabled} onClick={() => { setOpen(null); item.action?.() }}><span className="kd-menu-check">{item.checked ? '✓' : ''}</span>{item.label}</button>)}</div> : null}
   </div>
 }
 
@@ -56,6 +69,9 @@ export function MenuBar(props: MenuBarProps) {
   }, [])
   const edit = (command: string) => { document.execCommand(command) }
   const active = props.active
+  const activeSessionId = typeof active?.payload?.sessionId === 'string' ? active.payload.sessionId : undefined
+  const activeAgent = props.agents.find(agent => agent.id === activeSessionId)
+  const editable = active !== undefined && ['knowledge-desk', 'textedit', 'terminal', 'find', 'scrapbook', 'settings'].includes(active.appId)
   const desk: MenuItem[] = [
     { label: 'About S7R…', action: props.onAbout }, { separator: true },
     { label: 'Settings…', action: props.onSettings },
@@ -63,35 +79,37 @@ export function MenuBar(props: MenuBarProps) {
     { label: 'Clock', action: () => { props.onAccessory('clock') } },
     { label: 'Puzzle', action: () => { props.onAccessory('puzzle') } },
     { label: 'Monitor', action: () => { props.onAccessory('monitor') } },
-    { label: 'Display Control Panel', action: () => { props.onAccessory('control-panel') } },
+    { label: 'Display Control Panel…', action: () => { props.onAccessory('control-panel') } },
   ]
   const file: MenuItem[] = [
+    { label: 'New Agent', action: props.onNewAgent },
+    { label: 'Open Agent…', action: props.onOpenAgents },
     { label: 'Choose Folder…', action: props.onChooseFolder },
     { label: 'Browse Current Workspace', action: props.onOpenFinder },
     { separator: true },
-    { label: 'Open Agent…', action: props.onOpenAgents },
-    { label: 'New Agent', action: props.onNewAgent },
     { label: 'New Terminal', action: props.onOpenTerminal },
     { label: 'Find…', action: props.onFind },
-    { label: 'Open Timeline', disabled: active?.appId !== 'knowledge-desk', action: props.onTimeline },
-    ...(props.runningAgents.length === 0 ? [] : [
-      { separator: true as const },
-      ...props.runningAgents.map(item => ({ label: `● ${item.title}`, action: () => { props.onFocusAgent(item.id) } })),
-    ]),
-    { separator: true }, { label: 'Save', disabled: active?.appId !== 'textedit', action: props.onSave },
+    ...(active?.appId === 'textedit' ? [{ separator: true as const }, { label: 'Save', action: props.onSave }] : []),
+    ...(active?.appId === 'knowledge-desk' && activeSessionId !== undefined ? [{ separator: true as const }, { label: 'Open Agent Timeline', action: props.onTimeline }, ...(activeAgent?.status === 'running' ? [{ label: 'Stop Running Agent', action: () => { props.onStopAgent(activeSessionId) } }] : [])] : []),
     { separator: true }, { label: 'Close Window', disabled: active === undefined, action: props.onClose },
   ]
   const editItems: MenuItem[] = [
-    { label: 'Undo', action: () => { edit('undo') } }, { separator: true },
-    { label: 'Cut', action: () => { edit('cut') } }, { label: 'Copy', action: () => { edit('copy') } },
-    { label: 'Paste', action: () => { edit('paste') } }, { label: 'Select All', action: () => { edit('selectAll') } },
+    { label: 'Undo', disabled: !editable, action: () => { edit('undo') } }, { separator: true },
+    { label: 'Cut', disabled: !editable, action: () => { edit('cut') } }, { label: 'Copy', disabled: active === undefined, action: () => { edit('copy') } },
+    { label: 'Paste', disabled: !editable, action: () => { edit('paste') } }, { label: 'Select All', disabled: active === undefined, action: () => { edit('selectAll') } },
   ]
-  const view: MenuItem[] = [{ label: 'Display Control Panel…', action: () => { props.onAccessory('control-panel') } }, { label: 'Refresh Active View', action: () => { window.dispatchEvent(new Event('knowledge-desk:refresh-active')) } }]
+  const refreshable = active !== undefined && ['finder', 'preview', 'timeline', 'monitor', 'find', 'trash'].includes(active.appId)
+  const view: MenuItem[] = active === undefined
+    ? [{ label: 'No Active View', disabled: true }]
+    : [{ heading: true, label: active.title }, ...(refreshable ? [{ label: 'Refresh', action: () => { window.dispatchEvent(new Event('knowledge-desk:refresh-active')) } }] : []), ...(active.appId === 'knowledge-desk' && activeSessionId !== undefined ? [{ label: 'Open Timeline', action: props.onTimeline }] : []), ...(!refreshable && !(active.appId === 'knowledge-desk' && activeSessionId !== undefined) ? [{ label: 'No View Commands', disabled: true }] : [])]
+  const agents = [...props.agents].sort((left, right) => Number(right.status === 'running') - Number(left.status === 'running') || right.updatedAt - left.updatedAt).slice(0, 14)
   const windowItems: MenuItem[] = [
     { label: 'Zoom', disabled: active === undefined, action: props.onZoom },
     { label: 'Collapse', disabled: active === undefined, action: props.onCollapse },
-    { label: 'Tile Windows', disabled: props.windows.length === 0, action: props.onTile }, { separator: true },
-    ...props.windows.map(window => ({ label: window.title, checked: window.id === active?.id, action: () => { props.onFocusWindow(window.id) } })),
+    { label: 'Tile Windows', disabled: props.windows.length === 0, action: props.onTile },
+    { label: 'Restore Previous Layout', disabled: !props.hasRestorableLayout, action: props.onRestoreLayout },
+    ...(props.windows.length === 0 ? [] : [{ separator: true as const }, { heading: true as const, label: 'Open Windows' }, ...[...props.windows].sort((left, right) => right.zIndex - left.zIndex).map(window => ({ label: window.title, checked: window.id === active?.id, action: () => { props.onFocusWindow(window.id) } }))]),
+    ...(agents.length === 0 ? [] : [{ separator: true as const }, { heading: true as const, label: 'Agents' }, ...agents.map(agent => ({ label: `${agent.status === 'running' ? '●' : agent.status === 'completed' ? '◇' : '○'} ${agent.title}`, action: () => { props.onFocusAgent(agent.id) } }))]),
   ]
   const special: MenuItem[] = [
     { label: 'Clean Up Desktop', action: props.onCleanUpDesktop },
@@ -100,6 +118,6 @@ export function MenuBar(props: MenuBarProps) {
     { label: 'Empty Trash…', disabled: props.trashCount === 0, action: props.onEmptyTrash },
   ]
   return <nav className="kd-menu-bar" aria-label="Global menu bar" onPointerDown={event => { event.stopPropagation() }}>
-    <Menu id="desk" label="S7R" items={desk} open={open} setOpen={setOpen} /><Menu id="file" label="File" items={file} open={open} setOpen={setOpen} /><Menu id="edit" label="Edit" items={editItems} open={open} setOpen={setOpen} /><Menu id="view" label="View" items={view} open={open} setOpen={setOpen} /><Menu id="window" label="Window" items={windowItems} open={open} setOpen={setOpen} /><Menu id="special" label="Special" items={special} open={open} setOpen={setOpen} /><Menu id="help" label="Help" items={[{ label: 'S7R Guide…', action: props.onHelp }, { separator: true }, { label: 'About S7R…', action: props.onAbout }]} open={open} setOpen={setOpen} /><span className="kd-menu-clock">{props.clock}</span>
+    <Menu id="desk" label="S7R" items={desk} open={open} setOpen={setOpen} /><Menu id="file" label="File" items={file} open={open} setOpen={setOpen} /><Menu id="edit" label="Edit" items={editItems} open={open} setOpen={setOpen} /><Menu id="view" label="View" items={view} open={open} setOpen={setOpen} /><Menu id="window" label="Window" items={windowItems} open={open} setOpen={setOpen} /><Menu id="special" label="Special" items={special} open={open} setOpen={setOpen} /><Menu id="help" label="Help" items={[{ label: 'S7R Guide…', action: props.onHelp }]} open={open} setOpen={setOpen} /><span className="kd-menu-clock">{props.clock}</span>
   </nav>
 }

@@ -2,6 +2,22 @@
 
 All notable user-facing changes to S7R are documented here. The project follows semantic versioning while its DSH dependency remains in release-candidate status.
 
+## 0.8.0 - 2026-08-20
+
+### Added
+
+- Explicit current-Workspace selection with Workspace-scoped Agent creation and browsing.
+- Agent filters for Workspace scope and run state, plus recent/name/status sorting and Workspace grouping.
+- A reversible **Window → Tile Windows / Restore Previous Layout** workflow.
+- A live Agent switcher in the Window menu and keyboard navigation within menus.
+- A **New output** control when fresh streamed content arrives while reading earlier conversation history.
+
+### Changed
+
+- File, View, and Window menus now follow the active application and avoid irrelevant or duplicate commands.
+- Knowledge Desk opens at a productive two-pane size and safely enlarges undersized restored launcher/Agent windows once.
+- Live output follows the bottom only while the reader is already there, so streaming no longer steals the scroll position.
+
 ## 0.7.0 - 2026-08-19
 
 ### Added

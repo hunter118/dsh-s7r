@@ -63,6 +63,21 @@ describe('window manager', () => {
     expect(state.windows.filter(window => window.state !== 'collapsed')).toHaveLength(3)
   })
 
+  it('restores the exact pre-tile layout without losing collapsed windows', () => {
+    let state = EMPTY_DESKTOP_STATE
+    for (let index = 0; index < 3; index += 1) state = windowReducer(state, { type: 'open', appId: 'finder', title: `F${index}` })
+    const collapsed = state.windows[1]!.id
+    state = windowReducer(state, { type: 'move', id: state.windows[0]!.id, x: 140, y: 90, workArea: area })
+    state = windowReducer(state, { type: 'collapse', id: collapsed })
+    const original = structuredClone(state.windows)
+    state = windowReducer(state, { type: 'tile', workArea: area })
+    expect(state.layoutRestore).toHaveLength(3)
+    state = windowReducer(state, { type: 'tile', workArea: area })
+    state = windowReducer(state, { type: 'restore-layout', workArea: area })
+    expect(state.windows).toEqual(original)
+    expect(state.layoutRestore).toBeUndefined()
+  })
+
   it('rescales existing windows when the base type size changes', () => {
     const compactArea = desktopWorkArea(832, 624, 10)
     const comfortableArea = desktopWorkArea(832, 624, 12)

@@ -2,7 +2,7 @@ import { clampWindowBounds, tileWindowBounds, uiMetrics } from './resolution.ts'
 import type { AppId, Bounds, DesktopState, DesktopWindowState, WindowAction } from './types.ts'
 
 const DEFAULT_BOUNDS: Record<AppId, Bounds> = {
-  'knowledge-desk': { x: 24, y: 32, width: 460, height: 340 },
+  'knowledge-desk': { x: 24, y: 32, width: 620, height: 410 },
   finder: { x: 54, y: 50, width: 390, height: 280 },
   textedit: { x: 74, y: 44, width: 440, height: 320 },
   preview: { x: 88, y: 40, width: 460, height: 340 },
@@ -114,9 +114,36 @@ export function windowReducer(state: DesktopState, action: WindowAction): Deskto
       let cursor = 0
       return {
         ...state,
+        layoutRestore: state.layoutRestore ?? state.windows.map(window => ({
+          id: window.id,
+          bounds: { ...window.bounds },
+          ...(window.restoreBounds === undefined ? {} : { restoreBounds: { ...window.restoreBounds } }),
+          state: window.state,
+        })),
         windows: state.windows.map(window => window.state === 'collapsed'
           ? window
           : { ...window, bounds: tiled[cursor++]!, restoreBounds: undefined, state: 'normal' }),
+      }
+    }
+    case 'restore-layout': {
+      if (state.layoutRestore === undefined) return state
+      const saved = new Map(state.layoutRestore.map(entry => [entry.id, entry]))
+      return {
+        ...state,
+        layoutRestore: undefined,
+        windows: state.windows.map(window => {
+          const entry = saved.get(window.id)
+          if (entry === undefined) return window
+          const bounds = entry.state === 'zoomed' ? { ...action.workArea } : clampWindowBounds(entry.bounds, action.workArea)
+          return {
+            ...window,
+            bounds,
+            state: entry.state,
+            ...(entry.restoreBounds === undefined
+              ? { restoreBounds: undefined }
+              : { restoreBounds: clampWindowBounds(entry.restoreBounds, action.workArea) }),
+          }
+        }),
       }
     }
     case 'reflow':
@@ -125,6 +152,11 @@ export function windowReducer(state: DesktopState, action: WindowAction): Deskto
         windows: state.windows.map(window => window.state === 'zoomed'
           ? { ...window, bounds: { ...action.workArea } }
           : { ...window, bounds: clampWindowBounds(window.bounds, action.workArea) }),
+        layoutRestore: state.layoutRestore?.map(entry => ({
+          ...entry,
+          bounds: entry.state === 'zoomed' ? { ...action.workArea } : clampWindowBounds(entry.bounds, action.workArea),
+          ...(entry.restoreBounds === undefined ? {} : { restoreBounds: clampWindowBounds(entry.restoreBounds, action.workArea) }),
+        })),
       }
     case 'rescale-ui': {
       const resizeBounds = (bounds: Bounds): Bounds => clampWindowBounds({
@@ -138,6 +170,11 @@ export function windowReducer(state: DesktopState, action: WindowAction): Deskto
         windows: state.windows.map(window => window.state === 'zoomed'
           ? { ...window, bounds: { ...action.workArea }, restoreBounds: window.restoreBounds === undefined ? undefined : resizeBounds(window.restoreBounds) }
           : { ...window, bounds: resizeBounds(window.bounds), restoreBounds: window.restoreBounds === undefined ? undefined : resizeBounds(window.restoreBounds) }),
+        layoutRestore: state.layoutRestore?.map(entry => ({
+          ...entry,
+          bounds: entry.state === 'zoomed' ? { ...action.workArea } : resizeBounds(entry.bounds),
+          ...(entry.restoreBounds === undefined ? {} : { restoreBounds: resizeBounds(entry.restoreBounds) }),
+        })),
       }
     }
     case 'retitle':
