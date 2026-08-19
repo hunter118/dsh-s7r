@@ -90,6 +90,7 @@ describe('versioned local persistence', () => {
       trash: [{ shortcut: { id: 'agent:trashed', kind: 'agent', label: 'Trashed Agent', sessionId: 'trashed', x: 150, y: 80 }, trashedAt: 456 }],
       renderMarkdown: false,
       agentMenuLimit: 7,
+      balloonHelp: true,
     }
     writeDesktopPersistence(storage, state)
     expect(storage.values.has(DESKTOP_STORAGE_KEY)).toBe(true)
@@ -99,6 +100,7 @@ describe('versioned local persistence', () => {
     expect(restored.trash).toEqual(state.trash)
     expect(restored.renderMarkdown).toBe(false)
     expect(restored.agentMenuLimit).toBe(7)
+    expect(restored.balloonHelp).toBe(true)
     expect(restored.desktop.windows.map(window => window.appId)).toEqual(['knowledge-desk'])
     expect(restored.desktop.activeId).toBe('window-1')
     expect(restored.desktop.layoutRestore?.map(entry => entry.id)).toEqual(['window-1'])
@@ -107,7 +109,7 @@ describe('versioned local persistence', () => {
   it('migrates version 1 desktop state with empty Trash and Markdown enabled', () => {
     const storage = new MemoryStorage()
     storage.setItem(DESKTOP_STORAGE_KEY, JSON.stringify({ version: 1, desktop: { windows: [], nextId: 1, nextZ: 1 }, shortcuts: [], archivedAgents: [] }))
-    expect(readDesktopPersistence(storage)).toMatchObject({ version: 2, trash: [], renderMarkdown: true, agentMenuLimit: 5 })
+    expect(readDesktopPersistence(storage)).toMatchObject({ version: 2, trash: [], renderMarkdown: true, agentMenuLimit: 5, balloonHelp: false })
   })
 
   it('rejects malformed desktop state instead of partially trusting it', () => {

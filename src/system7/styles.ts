@@ -53,6 +53,16 @@ body { background: #777; }
 .kd-menu-check { position: absolute; left: var(--s7-gap); }
 .kd-menu-section { min-height: var(--s7-menu-item-height); display: flex; align-items: center; padding: 1px calc(var(--s7-gap) * 2); font-family: var(--s7-mono); font-size: var(--s7-small-font); color: var(--s7-dark); background: var(--s7-mid); border-top: 1px solid var(--s7-white); border-bottom: 1px solid var(--s7-dark); }
 .kd-menu-separator { height: 1px; background: var(--s7-dark); border-bottom: 1px solid var(--s7-white); margin: 2px 0; }
+.s7-context-menu { position: absolute; z-index: 150000; min-width: calc(var(--s7-font-size) * 17); max-width: calc(var(--s7-font-size) * 28); padding: 2px 0; border: 1px solid var(--s7-ink); background: var(--s7-surface); color: var(--s7-ink); box-shadow: 2px 2px 0 var(--s7-ink), inset 1px 1px 0 var(--s7-white); }
+.s7-context-menu button { position: relative; width: 100%; min-height: var(--s7-menu-item-height); padding: 1px calc(var(--s7-gap) * 2) 1px calc(var(--s7-font-size) * 1.5); border: 0; background: transparent; text-align: left; white-space: nowrap; }
+.s7-context-menu button > span { position: absolute; left: var(--s7-gap); }
+.s7-context-menu button:hover:not(:disabled),.s7-context-menu button:focus-visible:not(:disabled) { background: var(--s7-ink); color: var(--s7-white); outline: none; }
+.s7-context-menu button:disabled { color: var(--s7-dark); text-shadow: 1px 1px 0 var(--s7-white); }
+.s7-context-separator { height: 1px; margin: 2px 0; background: var(--s7-dark); border-bottom: 1px solid var(--s7-white); }
+.s7-context-heading { overflow: hidden; padding: 1px calc(var(--s7-gap) * 2); border-top: 1px solid var(--s7-white); border-bottom: 1px solid var(--s7-dark); background: var(--s7-mid); color: var(--s7-dark); font: var(--s7-small-font)/var(--s7-small-line) var(--s7-mono); text-overflow: ellipsis; white-space: nowrap; }
+.s7-balloon-help { position: absolute; z-index: 140000; width: max-content; max-width: calc(var(--s7-font-size) * 26); padding: calc(var(--s7-gap) * 2); border: 2px solid var(--s7-ink); background: #fff9a8; color: var(--s7-ink); box-shadow: 2px 2px 0 var(--s7-dark); pointer-events: none; white-space: normal; }
+.s7-balloon-help::before { content: ''; position: absolute; left: 8px; top: -8px; width: 8px; height: 8px; border-left: 2px solid var(--s7-ink); border-top: 2px solid var(--s7-ink); background: #fff9a8; transform: skew(-25deg); }
+.s7-balloon-help[data-side="above"]::before { top: auto; bottom: -8px; border: 0; border-right: 2px solid var(--s7-ink); border-bottom: 2px solid var(--s7-ink); transform: skew(25deg); }
 .kd-window { position: absolute; display: flex; flex-direction: column; min-width: var(--s7-min-window-width); min-height: var(--s7-title-height); background: var(--s7-surface); border: 1px solid var(--s7-ink); box-shadow: 1px 1px 0 var(--s7-white), 2px 2px 0 var(--s7-ink); overflow: clip; }
 .kd-window[data-active="false"] { box-shadow: 1px 1px 0 var(--s7-dark); }
 .kd-title-bar { height: var(--s7-title-height); flex: 0 0 var(--s7-title-height); display: grid; grid-template-columns: var(--s7-title-left) 1fr var(--s7-title-right); align-items: center; background: var(--s7-surface); border-bottom: 1px solid var(--s7-ink); cursor: default; touch-action: none; }

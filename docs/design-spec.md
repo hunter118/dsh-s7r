@@ -47,6 +47,8 @@ The first complete workstation includes:
 10. **Clock** and **Puzzle** — small desk accessories
 11. **Display** — logical resolution, UI size, pixel magnification, filters, and wallpaper
 12. **Settings** — safe `DEEPSEEK_API_KEY` status and mutation
+13. **DSH Control Center** — real model/reasoning, Preset, command/mode, Skill, and plugin-loader views
+14. **Agent Preset Stationery** — minimal creation from a DSH-owned Agent Preset
 
 Multiple windows may be open simultaneously. A single reducer owns focus, z-order, bounds, zoom/collapse state, tiling, and reflow.
 
@@ -62,6 +64,8 @@ A folder alias has two explicit meanings:
 - **Workspace Alias** makes that directory a Workspace and connects its Agent.
 
 Paths dropped into an Agent become `./relative/path` when contained by its current Workspace and remain absolute otherwise.
+
+Empty desktop space, aliases, Trash, Agent/Workspace rows, and Finder entries provide one keyboard-operable contextual-menu language. Menus expose object-appropriate Open, Get Info, path copy, placement, and Agent management actions. Finder contextual menus never delete real files; Trash and contextual deletion remain alias-only.
 
 ### Agent windows
 
@@ -89,6 +93,8 @@ Monitor combines system state and background work. It shows live Agent activity,
 All unstable DSH assumptions belong under `src/dsh-compat/`.
 
 The browser adapter consumes supported session, workspace, credential, connection, and slot services. The host adapter consumes supported Agent, persistence, filesystem, terminal, and metrics services. Package-specific host calls are loopback-authorized logical RPC.
+
+Native DSH controls must remain projections of DSH state. Model/reasoning routes, Agent Presets, slash commands/modes, Skills, and plugin-loader inventory come from public connection/Remote catalogs. Read-only upstream state must never be presented as a working toggle. Stationery uses DSH Agent Presets directly and intentionally owns no parallel template schema.
 
 The compatibility layer must:
 
@@ -140,6 +146,7 @@ Display preferences, imported wallpaper, Scrapbook data, and desktop state use s
 - Focus and selection use hard-edged visible states.
 - Window titles, status labels, and toolbars must not wrap at supported UI sizes.
 - Controls should remain operable at Fit Browser 1×/2× and every fixed resolution.
+- Optional Balloon Help uses delayed pointer hover and keyboard focus, is disabled by default, hides behind menus/dialogs and during active interaction, and flips/clamps within the logical desktop after exact 1×/2× coordinate conversion.
 
 ## Release acceptance criteria
 

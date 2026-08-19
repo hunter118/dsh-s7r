@@ -16,6 +16,8 @@ const DEFAULT_BOUNDS: Record<AppId, Bounds> = {
   'control-panel': { x: 146, y: 58, width: 370, height: 300 },
   find: { x: 92, y: 40, width: 520, height: 360 },
   trash: { x: 174, y: 74, width: 430, height: 280 },
+  'dsh-control': { x: 92, y: 38, width: 570, height: 390 },
+  stationery: { x: 126, y: 58, width: 470, height: 340 },
 }
 
 export const EMPTY_DESKTOP_STATE: DesktopState = {

@@ -23,12 +23,15 @@ DSH remains the source of truth. S7R does not copy conversations into its own ch
 | **Workspaces** | Registers a real folder with DSH, remembers recent folders, and uses the selected Workspace as the filesystem boundary for Agents, Finder, Preview, TextEdit, Terminal, and Find. |
 | **Knowledge Desk** | Makes the current Workspace explicit; groups and filters Agents by Workspace/state; sorts by recency/name/status; and creates, reopens, renames, exports, archives, restores, or places Agents on the desktop. |
 | **Agent windows** | Streams real DSH output and reasoning, shows tools and attachments, accepts steering/cancellation, reloads persisted history, and optionally renders completed Markdown safely. |
+| **Native DSH controls** | Exposes the selected Agent's real model/reasoning route, Agent Preset, slash-command modes, project Skills, and read-only plugin-loader inventory without inventing parallel S7R settings. |
+| **Agent Preset Stationery** | Creates a new Workspace-owned Agent from an installed DSH Agent Preset, with only an optional name and opening prompt. |
 | **Context and Timeline** | Shows provider-reported context length and pressure, estimates content shares, requests compaction or a summary-carrying successor, and exposes the complete event stream with adjacent chunks folded into runs. |
 | **Files** | Provides Workspace-contained Finder, conflict-aware plain-text editing, image/PDF Preview, and portable path drops into Agents. Host paths are validated again on every request. |
 | **Terminal** | Opens an owner-scoped DSH terminal running `/bin/zsh -f -i`, even when no Agent window is open, with retained low-latency output and visible command acknowledgement. |
 | **Find** | Searches file/folder names, source contents, visible messages, or all persisted Agent events as independent scopes, then opens the matching file, Agent, or Timeline location. |
 | **Monitor and notices** | Combines live Agent state, background jobs, context pressure, host CPU/active RAM, and DSH process RSS; minimal notices appear when an Agent completes. |
 | **Desktop** | Restores window geometry and z-order; supports Workspace, Agent, Finder-item, and Scrapbook aliases; marquee selection; group dragging; and reversible alias-only Trash. |
+| **Contextual help** | Adds keyboard-accessible right-click menus and optional delayed Balloon Help whose positions stay sharp and bounded at exact 1×/2× magnification. |
 | **Scrapbook and accessories** | Captures editable conversation cards with one-click copy and desktop placement; includes Clock and a legally shuffled, always-solvable 4×4 Puzzle. |
 | **Display and wallpaper** | Offers Fit Browser or fixed logical work areas, 10px/12px bitmap UI masters, exact 1×/2× magnification, Preview filters, built-in patterns, a seamless Cat tile, and processed imported wallpaper. |
 | **Credentials** | Reads only DSH's configured/source/writable status and writes `DEEPSEEK_API_KEY` through DSH's loopback credential service; the saved secret is never returned to the page. |
@@ -44,10 +47,10 @@ DSH remains the source of truth. S7R does not copy conversations into its own ch
 
 ### Prebuilt release
 
-Download `dsh-s7r-0.8.0.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
+Download `dsh-s7r-0.9.0.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
 
 ```sh
-dsh plugin --profile web add ./dsh-s7r-0.8.0.tgz
+dsh plugin --profile web add ./dsh-s7r-0.9.0.tgz
 dsh --profile web --dump-config
 dsh web
 ```
@@ -87,8 +90,9 @@ Remove the installed version before adding a different tarball. S7R's browser-lo
 1. Open **S7R → Settings…**. If DSH does not already receive `DEEPSEEK_API_KEY` from its launch environment, save it here. S7R can report configured/source/writable state but cannot read the stored value back.
 2. Choose **File → Choose Folder…**. The native DSH picker registers that external directory as a Workspace before an Agent begins work.
 3. Use Knowledge Desk to create, search, reopen, rename, archive/restore, or export Agents.
-4. Use **File → New Terminal** for zsh even when Finder and every Agent window are closed.
-5. Open **Help → S7R Guide…** for the same compact workflow reference inside the workstation.
+4. Use **File → New from Stationery…** to start from a real DSH Agent Preset, or **S7R → DSH Control Center…** to inspect the active model, commands/modes, Skills, and plugin inventory.
+5. Use **File → New Terminal** for zsh even when Finder and every Agent window are closed.
+6. Turn on **Help → Show Balloon Help** for delayed hover/focus explanations, and open **S7R Guide…** for the compact workflow reference.
 
 Browser-owned shortcuts such as Command-N and Command-W are intentionally not advertised because a page cannot reliably override the browser tab.
 
@@ -116,6 +120,12 @@ Every Agent window keeps a compact single-line toolbar:
 Completed output can safely render headings, emphasis, inline/fenced code, lists, quotes, and tables. Streaming remains plain text until the message is complete, raw HTML is never injected, and LaTeX remains source text. The rendering switch is per browser profile and never rewrites stored conversation data. Color Emoji are displayed as monochrome pixel-font symbols or short text for visual consistency.
 
 Streaming follows the newest output only while the reader is already near the bottom. Scrolling upward keeps the reading position stable; a **New output ↓** button reports fresh content and returns to the live edge on demand.
+
+## Native DSH controls and Agent Preset Stationery
+
+**S7R → DSH Control Center…** is an adapter over the selected Agent's public DSH services, not a second configuration database. It shows and applies real provider model/reasoning routes, allows DSH's Preset to change only while an Agent is still blank, lists Agent-scoped slash commands (including modes registered by its Preset), exposes project Skills through the same invocation path as the composer, and reports the loader's complete plugin inventory. DSH rc.7 publishes plugin inventory as read-only, so S7R intentionally does not draw switches that cannot be committed safely.
+
+**File → New from Stationery…** is a deliberately small Stationery Pad built on DSH Agent Presets. Choose a Workspace and installed Preset, optionally supply a display name and opening prompt, and S7R asks DSH to create the Agent with that composition. Preset descriptions and broken/local status come from DSH; S7R creates no competing template format.
 
 ## Workspaces, Finder, TextEdit, and Preview
 
@@ -163,6 +173,8 @@ The menu bar follows the active application: File and View expose only relevant 
 
 Workspaces, Agents, Finder items, and individual Scrapbook cards can become desktop objects. Drag empty desktop space to marquee-select several aliases; then drag any selected item to move the group while preserving its layout. Opening an alias routes to its real object rather than a browser-local copy.
 
+Contextual menus are available on empty desktop space, desktop aliases, Trash, Knowledge Desk Agent/Workspace rows, and Finder entries. Depending on the object they provide Open, DSH Controls, Finder/Workspace placement, rename/export/archive, relative or absolute path copy, desktop placement, and **Get Info**. Delete operations in these menus affect only S7R aliases or its reversible Agent archive layer; Finder's menu never deletes a real file.
+
 Folders have two explicit desktop meanings:
 
 - **Finder Alias** opens the directory within its existing Workspace.
@@ -171,6 +183,8 @@ Folders have two explicit desktop meanings:
 Delete/Backspace or a drop on Trash moves only aliases into S7R's reversible Trash. **Put Away** restores them; **Special → Empty Trash…** permanently discards aliases only. Real files, Workspaces, Agent logs, and Scrapbook cards are never deleted by desktop Trash.
 
 Paths dropped into an Agent become portable `./relative/path` references when they are inside that Agent's Workspace and remain absolute otherwise.
+
+**Help → Show Balloon Help** enables delayed yellow explanations on marked controls. The preference persists locally. Balloons also appear for keyboard focus, disappear on typing/clicking/scrolling or while a menu/dialog is open, flip and clamp at desktop edges, and calculate from logical coordinates so exact 2× magnification does not double the offset.
 
 ## Scrapbook and desk accessories
 
@@ -198,7 +212,7 @@ Classic Dots is the default wallpaper. Desk Gray, Pinstripes, seamless Cat, and 
 | Owner | Data |
 | --- | --- |
 | **DSH** | Agents, conversation/event logs, Workspace registration, files, terminal owners/processes, tools, credentials, and background jobs. |
-| **S7R browser profile** | Display preferences, processed imported wallpaper, Scrapbook cards, window and desktop layout, alias Trash, reversible S7R archives, and Markdown preference. |
+| **S7R browser profile** | Display preferences, processed imported wallpaper, Scrapbook cards, window and desktop layout, alias Trash, reversible S7R archives, Markdown preference, and Balloon Help setting. |
 
 Browser-local records are versioned; malformed records fail closed and known older formats migrate explicitly. Closing an Agent window never deletes its DSH session. Clearing browser site data resets S7R's local desktop customizations but does not delete DSH conversations or Workspace files.
 
@@ -232,7 +246,7 @@ pnpm check
 pnpm pack
 ```
 
-`pnpm check` runs strict host/client TypeScript checks, 62 deterministic tests, and production host/client bundles. PDF.js and its worker implementation are embedded so Preview needs no CDN or runtime network dependency.
+`pnpm check` runs strict host/client TypeScript checks, 65 deterministic tests, and production host/client bundles. PDF.js and its worker implementation are embedded so Preview needs no CDN or runtime network dependency.
 
 Project references:
 

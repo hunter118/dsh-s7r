@@ -15,6 +15,8 @@ export type AppId =
   | 'control-panel'
   | 'find'
   | 'trash'
+  | 'dsh-control'
+  | 'stationery'
 
 export interface Bounds {
   x: number

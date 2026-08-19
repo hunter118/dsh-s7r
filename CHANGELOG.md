@@ -2,6 +2,20 @@
 
 All notable user-facing changes to S7R are documented here. The project follows semantic versioning while its DSH dependency remains in release-candidate status.
 
+## 0.9.0 - 2026-08-20
+
+### Added
+
+- System 7-style contextual menus for the desktop, aliases, Trash, Knowledge Desk Agents and Workspaces, and Finder entries, including Open, Get Info, portable/absolute path copy, desktop placement, Agent management, and safe alias-only deletion.
+- A native DSH Control Center for model and reasoning routes, blank-Agent Preset selection, registered commands/modes, project Skills, and authoritative plugin-loader inventory.
+- DSH Agent Preset Stationery for creating a new Workspace-owned Agent from an installed Preset with an optional name and opening prompt.
+- Optional persistent Balloon Help with delayed pointer hover, keyboard-focus support, dialog/menu suppression, edge-aware placement, and exact 1×/2× logical-coordinate mapping.
+
+### Changed
+
+- DSH capabilities are loaded independently so an unavailable cold-session Skill catalog does not hide model, command, Preset, or plugin data.
+- The in-app guide now documents contextual menus, Stationery, DSH controls, Trash safety, and Balloon Help.
+
 ## 0.8.0 - 2026-08-20
 
 ### Added

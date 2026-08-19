@@ -6,7 +6,7 @@ export function SystemButton(props: ButtonHTMLAttributes<HTMLButtonElement>) {
 }
 
 export function SystemIconButton({ label, children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; children: ReactNode }) {
-  return <button {...props} className={`s7-icon-button ${props.className ?? ''}`.trim()} aria-label={label} title={label}>{children}</button>
+  return <button {...props} className={`s7-icon-button ${props.className ?? ''}`.trim()} aria-label={label} data-balloon={label}>{children}</button>
 }
 
 export function SystemInput(props: InputHTMLAttributes<HTMLInputElement>) {
@@ -52,7 +52,7 @@ export function SystemDialog({ title, children, onClose }: { title: string; chil
 export function AppIcon({ app }: { app: string }) {
   const glyph: Record<string, string> = {
     'knowledge-desk': 'KD', finder: '▤', textedit: 'T', preview: '◫', terminal: '>_', timeline: '≡',
-    scrapbook: '▦', clock: '◷', puzzle: '15', monitor: '▥', settings: '⚙', 'control-panel': '▧', find: '?', trash: '▥', folder: '▰', file: '▥',
+    scrapbook: '▦', clock: '◷', puzzle: '15', monitor: '▥', settings: 'CP', 'control-panel': '▧', find: '?', trash: '▥', folder: '▰', file: '▥', 'dsh-control': 'DSH', stationery: 'AP',
   }
   return <span className={`s7-app-icon s7-app-icon-${app}`} aria-hidden="true">{glyph[app] ?? '◆'}</span>
 }

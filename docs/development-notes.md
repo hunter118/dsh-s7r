@@ -22,6 +22,7 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 - **0.6** added the Workspace launcher, Agent search/rename/export/archive restore, global Find, integrated background monitor, Context Inspector, desktop aliases, state restore, and notifications.
 - **0.7** completed desktop multi-select/Trash, Agent side panels, safe Markdown rendering, relative path drops, toolbar reflow fixes, and Classic Dots defaults.
 - **0.8** made Workspace selection and Agent browsing explicit, added non-disruptive stream following, contextual menus, an Agent switcher, and reversible window tiling.
+- **0.9** completed object-level contextual menus, native DSH model/Preset/command/Skill/plugin surfaces, Agent Preset Stationery, and exact-scale Balloon Help.
 
 ## Architecture decisions
 
@@ -35,10 +36,10 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 
 ## Verification summary
 
-The 0.8.0 release candidate has passed:
+The 0.9.0 release candidate has passed:
 
 - strict host and client TypeScript checks;
-- 15 Vitest files / 62 deterministic tests;
+- 16 Vitest files / 65 deterministic tests;
 - production host and self-contained client builds;
 - clean tarball installation into a disposable DSH Web profile;
 - root replacement, multi-window focus/move/resize/zoom/collapse/tile/reflow;
@@ -52,6 +53,8 @@ The 0.8.0 release candidate has passed:
 - Fit Browser and fixed resolutions at 1×/2× with 10px/12px UI metrics;
 - desktop aliases, marquee multi-selection, group dragging, Trash restore, and state reload;
 - contextual menu contents, keyboard menu navigation, Agent switching, and exact post-tile layout restoration;
+- native DSH model/reasoning, Preset, command/mode, Skill, and 162-entry plugin inventory views;
+- DSH Agent Preset Stationery and persistent Balloon Help at Fit Browser 1×/2×;
 - non-disruptive streamed-output following with an explicit new-output return control;
 - safe Markdown on/off and monochrome Emoji normalization;
 - clean browser diagnostics apart from expected restart warnings and PDF.js's bundled worker-fallback warning.

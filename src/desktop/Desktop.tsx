@@ -4,23 +4,28 @@ import type { DshClientAdapter } from '../dsh-compat/client.ts'
 import { AccessoriesStylesBridge, AppStylesBridge } from './style-bridge.tsx'
 import { DisplayControlPanel, ClockApp, MonitorApp, PuzzleApp, ScrapbookApp, SettingsApp, TimelineApp, TrashApp, type MonitorTaskView } from '../apps/accessories/Accessories.tsx'
 import { FinderApp, PreviewApp, TerminalApp, TextEditApp } from '../apps/files/FileApps.tsx'
+import type { FileEntryView } from '../dsh-compat/protocol.ts'
 import { KnowledgeDeskApp } from '../apps/knowledge-desk/KnowledgeDeskApp.tsx'
 import { FindApp } from '../apps/find/FindApp.tsx'
-import { pathBasename, pathExtension } from '../apps/common.tsx'
+import { DshControlApp, StationeryPadApp } from '../apps/dsh/DshApps.tsx'
+import { errorMessage, pathBasename, pathExtension } from '../apps/common.tsx'
 import { readDisplayPreferences, writeDisplayPreferences, type DisplayPreferences } from '../display/preferences.ts'
 import { desktopWorkArea, resolveDesktopSize, uiMetrics } from './resolution.ts'
 import { windowReducer } from './window-manager.ts'
 import type { AppId, Bounds, DesktopWindowState } from './types.ts'
 import { MenuBar } from './MenuBar.tsx'
 import { SystemWindow } from './SystemWindow.tsx'
-import { AppIcon, SystemButton, SystemDialog } from '../system7/primitives.tsx'
+import { AppIcon, SystemButton, SystemDialog, SystemInput } from '../system7/primitives.tsx'
 import { readScrapbook, writeScrapbook, type ScrapbookCard } from '../storage/scrapbook.ts'
 import { readImportedWallpapers, writeImportedWallpapers, type ImportedWallpaper, type ImportedWallpaperLibrary } from '../storage/wallpaper.ts'
 import { buildSeamlessCatTile, filterWallpaperSource } from '../display/wallpaper.ts'
 import catWallpaperSprite from '../assets/cat-wallpaper-sprite.png'
 import { readDesktopPersistence, shortcutId, writeDesktopPersistence, type AgentMenuLimit, type ArchivedAgentRecord, type DesktopShortcut, type TrashedShortcutRecord } from '../storage/desktop.ts'
-import { readDragItem, writeDragItem, type S7RDragItem } from './drag.ts'
+import { readDragItem, relativePathReference, writeDragItem, type S7RDragItem } from './drag.ts'
 import { moveShortcutGroup, normalizedSelectionRect, shortcutsInRect, type SelectionRect } from './selection.ts'
+import { ContextMenu, type ContextMenuItem, type ContextMenuModel } from '../system7/ContextMenu.tsx'
+import { BalloonHelp } from '../system7/BalloonHelp.tsx'
+import { toLogicalPoint } from '../system7/interaction-geometry.ts'
 
 export type DesktopRootProps = PropsRuntime<'root'> & { adapter: DshClientAdapter }
 
@@ -40,8 +45,10 @@ function loadCatWallpaper(mode: DisplayPreferences['wallpaperFilterMode'], pixel
 }
 
 function appTitle(appId: AppId): string {
-  return appId === 'control-panel' ? 'Display' : appId === 'knowledge-desk' ? 'Knowledge Desk' : appId === 'find' ? 'Find' : appId[0]!.toUpperCase() + appId.slice(1)
+  return appId === 'control-panel' ? 'Display' : appId === 'knowledge-desk' ? 'Knowledge Desk' : appId === 'find' ? 'Find' : appId === 'dsh-control' ? 'DSH Control Center' : appId === 'stationery' ? 'Stationery Pad' : appId[0]!.toUpperCase() + appId.slice(1)
 }
+
+interface InfoRecord { title: string; fields: Array<{ label: string; value: string }> }
 
 function valueOf(payload: Record<string, unknown> | undefined, key: string): string | undefined {
   const value = payload?.[key]
@@ -76,6 +83,13 @@ function downloadExport(value: { filename: string; mime: string; content: string
   window.setTimeout(() => { URL.revokeObjectURL(url) }, 1000)
 }
 
+async function copyText(text: string): Promise<void> {
+  if (navigator.clipboard !== undefined) { await navigator.clipboard.writeText(text); return }
+  const textarea = document.createElement('textarea')
+  textarea.value = text; textarea.style.position = 'fixed'; textarea.style.opacity = '0'; document.body.appendChild(textarea); textarea.select()
+  document.execCommand('copy'); textarea.remove()
+}
+
 export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRootProps) {
   const sessions = useSessions(state => state)
   const workspaces = useWorkspaces(state => state)
@@ -86,6 +100,7 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
   const [trash, setTrash] = useState<TrashedShortcutRecord[]>(restored.trash)
   const [renderMarkdown, setRenderMarkdown] = useState(restored.renderMarkdown)
   const [agentMenuLimit, setAgentMenuLimit] = useState<AgentMenuLimit>(restored.agentMenuLimit)
+  const [balloonHelp, setBalloonHelp] = useState(restored.balloonHelp)
   const [preferences, setPreferences] = useState<DisplayPreferences>(() => readDisplayPreferences(window.localStorage))
   const [cards, setCards] = useState<ScrapbookCard[]>(() => readScrapbook(window.localStorage))
   const [wallpaperLibrary, setWallpaperLibrary] = useState<ImportedWallpaperLibrary>(() => readImportedWallpapers(window.localStorage))
@@ -101,8 +116,14 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
   const [pendingFolderShortcut, setPendingFolderShortcut] = useState<{ item: Extract<S7RDragItem, { kind: 'path' }>; x: number; y: number } | null>(null)
   const [confirmEmptyTrash, setConfirmEmptyTrash] = useState(false)
   const [notices, setNotices] = useState<Array<{ id: string; sessionId: string; title: string }>>([])
+  const [contextMenu, setContextMenu] = useState<ContextMenuModel | null>(null)
+  const [info, setInfo] = useState<InfoRecord | null>(null)
+  const [contextRename, setContextRename] = useState<{ sessionId: string; title: string } | null>(null)
+  const [contextRenameDraft, setContextRenameDraft] = useState('')
+  const [contextArchive, setContextArchive] = useState<{ sessionId: string; title: string } | null>(null)
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | undefined>(() => workspaces.recentWorkspaceId === undefined ? undefined : String(workspaces.recentWorkspaceId))
   const dirty = useRef(new Map<string, boolean>())
+  const desktopRef = useRef<HTMLElement | null>(null)
   const initialWindowOpened = useRef(restored.desktop.windows.length > 0)
   const completionBaseline = useRef(false)
   const previousCompleted = useRef(new Map<string, boolean>())
@@ -168,7 +189,7 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     }
   }, [desktop.windows, preferences.baseFontSize, workArea])
   useEffect(() => { writeScrapbook(window.localStorage, cards) }, [cards])
-  useEffect(() => { writeDesktopPersistence(window.localStorage, { version: 2, desktop, shortcuts, archivedAgents, trash, renderMarkdown, agentMenuLimit }) }, [agentMenuLimit, archivedAgents, desktop, renderMarkdown, shortcuts, trash])
+  useEffect(() => { writeDesktopPersistence(window.localStorage, { version: 2, desktop, shortcuts, archivedAgents, trash, renderMarkdown, agentMenuLimit, balloonHelp }) }, [agentMenuLimit, archivedAgents, balloonHelp, desktop, renderMarkdown, shortcuts, trash])
   useEffect(() => {
     if (sessions.phase === 'pending') return
     const next = new Map<string, boolean>()
@@ -299,6 +320,16 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     if (existing !== undefined) dispatch({ type: 'focus', id: existing.id })
     else open('trash', 'Trash')
   }, [desktop.windows, open])
+  const openDshControl = useCallback((sessionId?: string) => {
+    const existing = desktop.windows.find(window => window.appId === 'dsh-control' && valueOf(window.payload, 'sessionId') === sessionId)
+    if (existing !== undefined) dispatch({ type: 'focus', id: existing.id })
+    else open('dsh-control', 'DSH Control Center', sessionId === undefined ? undefined : { sessionId })
+  }, [desktop.windows, open])
+  const openStationery = useCallback(() => {
+    const existing = desktop.windows.find(window => window.appId === 'stationery')
+    if (existing !== undefined) dispatch({ type: 'focus', id: existing.id })
+    else open('stationery', 'Stationery Pad')
+  }, [desktop.windows, open])
 
   const upstreamArchivedIds = workspaces.archivedSessionIds.map(id => String(id))
   const upstreamArchivedSet = new Set(upstreamArchivedIds)
@@ -424,12 +455,93 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     moveToTrash(ids)
   }
 
+  const showContextMenu = (event: React.MouseEvent<HTMLElement>, items: ContextMenuItem[]) => {
+    event.preventDefault(); event.stopPropagation()
+    const bounds = desktopRef.current?.getBoundingClientRect()
+    const anchor = toLogicalPoint(event.clientX, event.clientY, bounds?.left ?? frameLeft, bounds?.top ?? frameTop, preferences.pixelScale)
+    setContextMenu({ anchor, items })
+  }
+  const copyPath = (path: string) => { void copyText(path).catch(reason => { setOperationError(errorMessage(reason)) }) }
+  const showAgentContext = (event: React.MouseEvent<HTMLElement>, session: { id: string; title: string; running: boolean; completed?: boolean; cwd?: string; updatedAt: number; workspaceId?: string; workspaceTitle?: string }) => {
+    showContextMenu(event, [
+      { kind: 'heading', label: session.title },
+      { label: 'Open', action: () => { focusOrOpenAgent(session.id) } },
+      { label: 'DSH Controls…', action: () => { openDshControl(session.id) } },
+      { label: 'Add Alias to Desktop', action: () => { putDesktopItem({ kind: 'agent', label: session.title, sessionId: session.id, ...(session.cwd === undefined ? {} : { cwd: session.cwd }) }) } },
+      { kind: 'separator' },
+      { label: 'Rename…', action: () => { setContextRename({ sessionId: session.id, title: session.title }); setContextRenameDraft(session.title) } },
+      { label: 'Export as Markdown', action: () => { void exportSession(session.id, 'markdown', session.title).catch(reason => { setOperationError(errorMessage(reason)) }) } },
+      { label: 'Export as JSON', action: () => { void exportSession(session.id, 'json', session.title).catch(reason => { setOperationError(errorMessage(reason)) }) } },
+      { label: 'Archive…', disabled: session.running, action: () => { setContextArchive({ sessionId: session.id, title: session.title }) } },
+      { kind: 'separator' },
+      { label: 'Get Info', action: () => { setInfo({ title: `${session.title} Info`, fields: [{ label: 'Kind', value: 'DSH Agent' }, { label: 'Status', value: session.running ? 'Running' : session.completed ? 'Completed' : 'Idle' }, { label: 'Session ID', value: session.id }, { label: 'Workspace', value: session.workspaceTitle ?? 'Unassigned' }, { label: 'Directory', value: session.cwd ?? 'Not reported' }, { label: 'Updated', value: session.updatedAt > 0 ? new Date(session.updatedAt).toLocaleString() : 'Unknown' }] }) } },
+    ])
+  }
+  const showWorkspaceContext = (event: React.MouseEvent<HTMLElement>, workspace: typeof workspaceRows[number]) => {
+    showContextMenu(event, [
+      { kind: 'heading', label: workspace.title },
+      { label: 'Open / Make Current', action: () => { void openWorkspace(workspace.id).catch(reason => { setOperationError(errorMessage(reason)) }) } },
+      { label: 'Browse in Finder', action: () => { openFinder(workspace.sessionIds[0], workspace.path) } },
+      { label: 'Add Alias to Desktop', action: () => { putDesktopItem({ kind: 'workspace', label: workspace.title, workspaceId: workspace.id, path: workspace.path }) } },
+      { kind: 'separator' },
+      { label: 'Copy Absolute Path', action: () => { copyPath(workspace.path) } },
+      { label: 'Get Info', action: () => { setInfo({ title: `${workspace.title} Info`, fields: [{ label: 'Kind', value: 'DSH Workspace' }, { label: 'Workspace ID', value: workspace.id }, { label: 'Path', value: workspace.path }, { label: 'Agents', value: String(workspace.sessionIds.length) }, { label: 'Current', value: workspace.id === currentWorkspaceId ? 'Yes' : 'No' }] }) } },
+    ])
+  }
+  const showFinderContext = (event: React.MouseEvent<HTMLElement>, entry: FileEntryView, sessionId: string, currentPath: string) => {
+    const cwd = sessions.byId[sessionId as keyof typeof sessions.byId]?.cwd
+    const supported = entry.type === 'file' || entry.type === 'directory'
+    const items: ContextMenuItem[] = [
+      { kind: 'heading', label: entry.name },
+      { label: 'Open', disabled: !supported, action: () => { entry.type === 'directory' ? openFinder(sessionId, entry.path) : openFile(sessionId, entry.path) } },
+      ...(entry.type === 'directory' ? [
+        { label: 'Open in Terminal', action: () => { void openTerminalForSession(sessionId, entry.path) } } as ContextMenuItem,
+        { label: 'Use as Workspace', action: () => { void adapter.connectWorkspacePath(entry.path).then(focusOrOpenAgent, reason => { setOperationError(errorMessage(reason)) }) } } as ContextMenuItem,
+      ] : []),
+      { kind: 'separator' },
+      ...(entry.type === 'directory' ? [
+        { label: 'Add Finder Alias to Desktop', action: () => { putDesktopItem({ kind: 'path', label: entry.name, sessionId, path: entry.path, pathType: 'directory', folderAction: 'browse' }) } } as ContextMenuItem,
+        { label: 'Add Workspace Alias to Desktop', action: () => { putDesktopItem({ kind: 'path', label: entry.name, sessionId, path: entry.path, pathType: 'directory', folderAction: 'workspace' }) } } as ContextMenuItem,
+      ] : [{ label: 'Add Alias to Desktop', disabled: entry.type !== 'file', action: () => { putDesktopItem({ kind: 'path', label: entry.name, sessionId, path: entry.path, pathType: 'file' }) } } as ContextMenuItem]),
+      { label: 'Copy Relative Path', disabled: !supported, action: () => { copyPath(relativePathReference(entry.path, cwd)) } },
+      { label: 'Copy Absolute Path', disabled: !supported, action: () => { copyPath(entry.path) } },
+      { kind: 'separator' },
+      { label: 'Get Info', action: () => { setInfo({ title: `${entry.name} Info`, fields: [{ label: 'Kind', value: entry.type }, { label: 'Name', value: entry.name }, { label: 'Path', value: entry.path }, { label: 'Size', value: entry.type === 'file' && entry.size !== undefined ? `${entry.size.toLocaleString()} bytes` : '—' }, { label: 'Containing Folder', value: currentPath }] }) } },
+    ]
+    showContextMenu(event, items)
+  }
+  const shortcutInfo = (item: DesktopShortcut): InfoRecord => item.kind === 'workspace'
+    ? { title: `${item.label} Info`, fields: [{ label: 'Kind', value: 'Workspace Alias' }, { label: 'Workspace ID', value: item.workspaceId }, { label: 'Original', value: item.path }, { label: 'Deletion', value: 'Alias only; source is preserved' }] }
+    : item.kind === 'agent'
+      ? { title: `${item.label} Info`, fields: [{ label: 'Kind', value: 'Agent Alias' }, { label: 'Session ID', value: item.sessionId }, { label: 'Directory', value: item.cwd ?? 'Not reported' }, { label: 'Deletion', value: 'Alias only; Agent history is preserved' }] }
+      : item.kind === 'path'
+        ? { title: `${item.label} Info`, fields: [{ label: 'Kind', value: `${item.pathType === 'directory' ? 'Folder' : 'File'} Alias` }, { label: 'Original', value: item.path }, { label: 'Opens as', value: item.pathType === 'file' ? 'Document' : item.folderAction === 'workspace' ? 'Workspace' : 'Finder folder' }, { label: 'Deletion', value: 'Alias only; source is preserved' }] }
+        : { title: `${item.label} Info`, fields: [{ label: 'Kind', value: 'Scrapbook Alias' }, { label: 'Card ID', value: item.cardId }, { label: 'Deletion', value: 'Alias only; Scrapbook card is preserved' }] }
+  const showShortcutContext = (event: React.MouseEvent<HTMLElement>, item: DesktopShortcut) => {
+    const groupIds = selectedShortcutIds.includes(item.id) ? selectedShortcutIds : [item.id]
+    const row = item.kind === 'agent' ? sessionRows.find(session => session.id === item.sessionId) : undefined
+    showContextMenu(event, [
+      { kind: 'heading', label: groupIds.length > 1 ? `${groupIds.length} selected aliases` : item.label },
+      { label: 'Open', action: () => { openDesktopShortcut(item) } },
+      ...(item.kind === 'agent' ? [{ label: 'DSH Controls…', action: () => { openDshControl(item.sessionId) } } as ContextMenuItem] : []),
+      ...(item.kind === 'workspace' ? [{ label: 'Browse in Finder', action: () => { const workspace = workspaceRows.find(candidate => candidate.id === item.workspaceId); openFinder(workspace?.sessionIds[0], item.path) } } as ContextMenuItem] : []),
+      { kind: 'separator' },
+      ...(item.kind === 'path' ? [{ label: 'Copy Relative Path', action: () => { copyPath(relativePathReference(item.path, sessions.byId[item.sessionId as keyof typeof sessions.byId]?.cwd)) } } as ContextMenuItem, { label: 'Copy Absolute Path', action: () => { copyPath(item.path) } } as ContextMenuItem] : []),
+      ...(item.kind === 'workspace' ? [{ label: 'Copy Absolute Path', action: () => { copyPath(item.path) } } as ContextMenuItem] : []),
+      ...(item.kind === 'agent' ? [{ label: 'Rename…', action: () => { setContextRename({ sessionId: item.sessionId, title: row?.title ?? item.label }); setContextRenameDraft(row?.title ?? item.label) } } as ContextMenuItem, { label: 'Export as Markdown', action: () => { void exportSession(item.sessionId, 'markdown', row?.title ?? item.label).catch(reason => { setOperationError(errorMessage(reason)) }) } } as ContextMenuItem, { label: 'Archive…', disabled: row?.running === true, action: () => { setContextArchive({ sessionId: item.sessionId, title: row?.title ?? item.label }) } } as ContextMenuItem] : []),
+      ...(item.kind === 'scrapbook' ? [{ label: 'Copy Card', action: () => { const card = cards.find(candidate => candidate.id === item.cardId); if (card !== undefined) copyPath(card.body ?? '') } } as ContextMenuItem] : []),
+      { kind: 'separator' },
+      { label: groupIds.length > 1 ? `Move ${groupIds.length} Aliases to Trash` : 'Move Alias to Trash', action: () => { moveToTrash(groupIds) } },
+      { label: 'Get Info', action: () => { setInfo(shortcutInfo(item)) } },
+    ])
+  }
+
   const contentFor = (window: DesktopWindowState) => {
     const sessionId = valueOf(window.payload, 'sessionId') ?? (sessions.current === undefined ? undefined : String(sessions.current))
     const path = valueOf(window.payload, 'path')
     switch (window.appId) {
-      case 'knowledge-desk': return <KnowledgeDeskApp adapter={adapter} sessionId={valueOf(window.payload, 'sessionId')} sessions={sessionRows} workspaces={workspaceRows} currentWorkspaceId={currentWorkspaceId} archivedAgents={archivedAgents} upstreamArchivedIds={upstreamArchivedIds} preferences={preferences} renderMarkdown={renderMarkdown} onRenderMarkdownChange={setRenderMarkdown} onOpenSession={focusOrOpenAgent} onArchiveSession={archiveSession} onRestoreSession={restoreSession} onRenameSession={renameSession} onExportSession={exportSession} onCreateHandoff={createHandoff} onAddDesktopItem={putDesktopItem} onNewSession={newAgent} onChooseFolder={chooseFolder} onOpenWorkspace={openWorkspace} onSelectWorkspace={setCurrentWorkspaceId} onOpenSettings={() => { open('settings', 'Settings') }} onOpenTimeline={openTimeline} onOpenFile={openFile} onAddScrap={addScrap} />
-      case 'finder': return <FinderApp adapter={adapter} sessionId={sessionId} initialPath={valueOf(window.payload, 'path')} onOpenFile={openFile} onOpenTerminal={(id, cwd) => { void openTerminalForSession(id, cwd) }} />
+      case 'knowledge-desk': return <KnowledgeDeskApp adapter={adapter} sessionId={valueOf(window.payload, 'sessionId')} sessions={sessionRows} workspaces={workspaceRows} currentWorkspaceId={currentWorkspaceId} archivedAgents={archivedAgents} upstreamArchivedIds={upstreamArchivedIds} preferences={preferences} renderMarkdown={renderMarkdown} onRenderMarkdownChange={setRenderMarkdown} onOpenSession={focusOrOpenAgent} onArchiveSession={archiveSession} onRestoreSession={restoreSession} onRenameSession={renameSession} onExportSession={exportSession} onCreateHandoff={createHandoff} onAddDesktopItem={putDesktopItem} onNewSession={newAgent} onChooseFolder={chooseFolder} onOpenWorkspace={openWorkspace} onSelectWorkspace={setCurrentWorkspaceId} onOpenSettings={() => { open('settings', 'Settings') }} onOpenTimeline={openTimeline} onOpenFile={openFile} onAddScrap={addScrap} onContextMenuAgent={showAgentContext} onContextMenuWorkspace={showWorkspaceContext} onOpenDshControl={openDshControl} />
+      case 'finder': return <FinderApp adapter={adapter} sessionId={sessionId} initialPath={valueOf(window.payload, 'path')} onOpenFile={openFile} onOpenTerminal={(id, cwd) => { void openTerminalForSession(id, cwd) }} onContextMenuEntry={(event, entry, currentPath) => { if (sessionId !== undefined) showFinderContext(event, entry, sessionId, currentPath) }} />
       case 'textedit': return sessionId === undefined || path === undefined ? <div className="kd-empty">No text document was supplied.</div> : <TextEditApp adapter={adapter} sessionId={sessionId} path={path} active={desktop.activeId === window.id} windowId={window.id} onDirtyChange={(id, isDirty) => { dirty.current.set(id, isDirty) }} onTitleChange={title => { dispatch({ type: 'retitle', id: window.id, title }) }} onRunInTerminal={(id, file) => { void openTerminalForSession(id, parentDirectory(file)) }} />
       case 'preview': return sessionId === undefined || path === undefined ? <div className="kd-empty">No preview document was supplied.</div> : <PreviewApp adapter={adapter} sessionId={sessionId} path={path} preferences={preferences} />
       case 'terminal': return sessionId === undefined ? <div className="kd-empty">A live agent session is required for a terminal.</div> : <TerminalApp adapter={adapter} sessionId={sessionId} cwd={valueOf(window.payload, 'cwd')} />
@@ -442,12 +554,14 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
       case 'scrapbook': { const cardId = valueOf(window.payload, 'cardId'); return <ScrapbookApp cards={cards} {...(cardId === undefined ? {} : { initialCardId: cardId })} onChange={setCards} onPutDesktop={card => { putDesktopItem({ kind: 'scrapbook', label: card.title, cardId: card.id }) }} onOpenSource={card => { const id = card.source?.sessionId; const file = card.source?.filePath; if (id !== undefined && file !== undefined) openFile(id, file); else if (id !== undefined) focusOrOpenAgent(id) }} /> }
       case 'find': return <FindApp adapter={adapter} workspaces={findTargets} sessionIds={[...new Set([...allSessionRows.map(row => row.id), ...archivedAgents.map(row => row.sessionId)])]} agentTitles={Object.fromEntries([...allSessionRows.map(row => [row.id, row.title]), ...archivedAgents.map(row => [row.sessionId, row.title])])} {...(sessions.current === undefined ? {} : { currentSessionId: String(sessions.current) })} onOpenFile={openFile} onOpenFolder={(id, folder) => { openFinder(id, folder) }} onOpenAgent={focusOrOpenAgent} onOpenTimeline={openTimeline} />
       case 'trash': return <TrashApp records={trash} onRestore={restoreFromTrash} onEmpty={() => { setTrash([]) }} />
+      case 'dsh-control': return <DshControlApp adapter={adapter} agents={sessionRows.map(row => ({ id: row.id, title: row.title, ...(row.cwd === undefined ? {} : { cwd: row.cwd }), ...(row.workspaceId === undefined ? {} : { workspaceId: row.workspaceId }) }))} initialSessionId={valueOf(window.payload, 'sessionId') ?? (sessions.current === undefined ? undefined : String(sessions.current))} onOpenAgent={focusOrOpenAgent} />
+      case 'stationery': return <StationeryPadApp adapter={adapter} workspaces={workspaceRows.map(row => ({ id: row.id, title: row.title, path: row.path }))} currentWorkspaceId={currentWorkspaceId} onChooseFolder={chooseFolder} onCreated={focusOrOpenAgent} />
     }
   }
 
   return <div className="knowledge-desk-host">
     <AppStylesBridge /><AccessoriesStylesBridge />
-    <div className="kd-stage"><div className="kd-frame-stack" style={{ width: visualWidth, height: visualHeight, left: frameLeft, top: frameTop }}><main className="kd-desktop" tabIndex={-1}
+    <div className="kd-stage"><div className="kd-frame-stack" style={{ width: visualWidth, height: visualHeight, left: frameLeft, top: frameTop }}><main ref={desktopRef} className="kd-desktop" tabIndex={-1}
       onPointerDown={event => {
         if (event.target !== event.currentTarget || event.button !== 0) return
         const startX = Math.round((event.clientX - frameLeft) / preferences.pixelScale)
@@ -468,22 +582,39 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
       }}
       onPointerUp={event => { if (marquee?.pointerId === event.pointerId) { setMarquee(null); event.currentTarget.releasePointerCapture(event.pointerId) } }}
       onKeyDown={event => { const target = event.target as HTMLElement; if ((event.key === 'Delete' || event.key === 'Backspace') && selectedShortcutIds.length > 0 && !target.matches('input,textarea,[contenteditable="true"]')) { event.preventDefault(); moveToTrash(selectedShortcutIds) } }}
+      onContextMenu={event => { if (event.target !== event.currentTarget) return; showContextMenu(event, [
+        { kind: 'heading', label: 'Desktop' },
+        { label: 'New Agent', action: () => { void newAgent().catch(reason => { setOperationError(errorMessage(reason)) }) } },
+        { label: 'New from Stationery…', action: openStationery },
+        { kind: 'separator' },
+        { label: 'Open Finder', action: () => { openFinder() } },
+        { label: 'New Terminal', action: () => { void openTerminalForCurrent() } },
+        { label: 'Find…', action: () => { open('find', 'Find') } },
+        { kind: 'separator' },
+        { label: 'Clean Up Desktop', disabled: shortcuts.length === 0, action: cleanUpDesktop },
+        { label: 'Desktop Info', action: () => { setInfo({ title: 'Desktop Info', fields: [{ label: 'Resolution', value: `${desktopSize.width} × ${desktopSize.height}` }, { label: 'Scale', value: `${preferences.pixelScale}×` }, { label: 'Base font', value: `${preferences.baseFontSize}px` }, { label: 'Aliases', value: String(shortcuts.length) }, { label: 'Open windows', value: String(desktop.windows.length) }] }) } },
+      ]) }}
       onDragOver={event => { if (event.dataTransfer.types.includes('application/x-s7r-desktop-item')) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }} onDrop={dropOnDesktop} style={{ width: desktopSize.width, height: desktopSize.height, zoom: preferences.pixelScale, ...wallpaperStyle }} data-resolution={preferences.resolution} data-base-font={preferences.baseFontSize} data-pixel-scale={preferences.pixelScale}>
       <MenuBar active={active} windows={desktop.windows} clock={now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} agents={sessionRows.map(row => ({ id: row.id, title: row.title, status: row.running ? 'running' : row.completed ? 'completed' : 'idle', updatedAt: row.updatedAt }))} agentMenuLimit={agentMenuLimit}
-        onAccessory={openAccessory} onSettings={() => { open('settings', 'Settings') }} onNewAgent={() => { void newAgent().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onChooseFolder={() => { void chooseFolder().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onOpenAgents={openAgentBrowser} onOpenFinder={() => { openFinder() }} onOpenTerminal={() => { void openTerminalForCurrent() }} onFind={() => { open('find', 'Find') }} onClose={() => { if (active !== undefined) requestClose(active.id) }} onSave={() => { window.dispatchEvent(new Event('knowledge-desk:save-active')) }}
-        onZoom={() => { if (active !== undefined) dispatch({ type: 'zoom', id: active.id, workArea }) }} onCollapse={() => { if (active !== undefined) dispatch({ type: 'collapse', id: active.id }) }} onTile={() => { dispatch({ type: 'tile', workArea }) }} onRestoreLayout={() => { dispatch({ type: 'restore-layout', workArea }) }} hasRestorableLayout={desktop.layoutRestore !== undefined} trashCount={trash.length} onOpenTrash={openTrash} onEmptyTrash={() => { setConfirmEmptyTrash(true) }} onCleanUpDesktop={cleanUpDesktop} onFocusWindow={id => { dispatch({ type: 'focus', id }) }} onTimeline={() => { const id = valueOf(active?.payload, 'sessionId'); if (id !== undefined) openTimeline(id) }} onFocusAgent={focusOrOpenAgent} onStopAgent={id => { void adapter.cancel(id).catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onHelp={() => { setHelp(true) }} onAbout={() => { setAbout(true) }} />
-      <div className="kd-desktop-items" aria-label="Desktop items">{shortcuts.map(item => <button key={item.id} draggable className="kd-desktop-item" data-selected={selectedShortcutIds.includes(item.id) || undefined} style={{ left: item.x, top: item.y }} title={item.kind === 'path' && item.pathType === 'directory' ? item.folderAction === 'workspace' ? `${item.path} · use as Workspace` : `${item.path} · browse in Finder` : item.kind === 'workspace' ? item.path : item.label}
+        onAccessory={openAccessory} onSettings={() => { open('settings', 'Settings') }} onDshControl={() => { openDshControl(valueOf(active?.payload, 'sessionId')) }} onStationery={openStationery} onNewAgent={() => { void newAgent().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onChooseFolder={() => { void chooseFolder().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onOpenAgents={openAgentBrowser} onOpenFinder={() => { openFinder() }} onOpenTerminal={() => { void openTerminalForCurrent() }} onFind={() => { open('find', 'Find') }} onClose={() => { if (active !== undefined) requestClose(active.id) }} onSave={() => { window.dispatchEvent(new Event('knowledge-desk:save-active')) }}
+        onZoom={() => { if (active !== undefined) dispatch({ type: 'zoom', id: active.id, workArea }) }} onCollapse={() => { if (active !== undefined) dispatch({ type: 'collapse', id: active.id }) }} onTile={() => { dispatch({ type: 'tile', workArea }) }} onRestoreLayout={() => { dispatch({ type: 'restore-layout', workArea }) }} hasRestorableLayout={desktop.layoutRestore !== undefined} trashCount={trash.length} onOpenTrash={openTrash} onEmptyTrash={() => { setConfirmEmptyTrash(true) }} onCleanUpDesktop={cleanUpDesktop} onFocusWindow={id => { dispatch({ type: 'focus', id }) }} onTimeline={() => { const id = valueOf(active?.payload, 'sessionId'); if (id !== undefined) openTimeline(id) }} onFocusAgent={focusOrOpenAgent} onStopAgent={id => { void adapter.cancel(id).catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onHelp={() => { setHelp(true) }} balloonHelp={balloonHelp} onBalloonHelpChange={setBalloonHelp} onAbout={() => { setAbout(true) }} />
+      <div className="kd-desktop-items" aria-label="Desktop items">{shortcuts.map(item => <button key={item.id} draggable className="kd-desktop-item" data-selected={selectedShortcutIds.includes(item.id) || undefined} style={{ left: item.x, top: item.y }} data-balloon={item.kind === 'path' && item.pathType === 'directory' ? item.folderAction === 'workspace' ? `${item.path} · use as Workspace` : `${item.path} · browse in Finder` : item.kind === 'workspace' ? item.path : item.label}
         onPointerDown={event => { event.stopPropagation(); if (event.metaKey || event.shiftKey) setSelectedShortcutIds(current => current.includes(item.id) ? current.filter(id => id !== item.id) : [...current, item.id]); else if (!selectedShortcutIds.includes(item.id)) setSelectedShortcutIds([item.id]) }}
-        onDragStart={event => { writeDragItem(event.dataTransfer, dragItemOf(item, selectedShortcutIds.includes(item.id) ? selectedShortcutIds : [item.id])) }} onClick={event => { event.stopPropagation() }} onDoubleClick={() => { openDesktopShortcut(item) }}><AppIcon app={item.kind === 'workspace' ? 'folder' : item.kind === 'agent' ? 'knowledge-desk' : item.kind === 'scrapbook' ? 'scrapbook' : item.pathType === 'directory' ? 'folder' : 'file'} /><span>{item.label}</span>{item.kind === 'path' && item.pathType === 'directory' ? <small>{item.folderAction === 'workspace' ? 'WORKSPACE' : 'FINDER'}</small> : null}</button>)}</div>
+        onDragStart={event => { writeDragItem(event.dataTransfer, dragItemOf(item, selectedShortcutIds.includes(item.id) ? selectedShortcutIds : [item.id])) }} onClick={event => { event.stopPropagation() }} onDoubleClick={() => { openDesktopShortcut(item) }} onContextMenu={event => { if (!selectedShortcutIds.includes(item.id)) setSelectedShortcutIds([item.id]); showShortcutContext(event, item) }}><AppIcon app={item.kind === 'workspace' ? 'folder' : item.kind === 'agent' ? 'knowledge-desk' : item.kind === 'scrapbook' ? 'scrapbook' : item.pathType === 'directory' ? 'folder' : 'file'} /><span>{item.label}</span>{item.kind === 'path' && item.pathType === 'directory' ? <small>{item.folderAction === 'workspace' ? 'WORKSPACE' : 'FINDER'}</small> : null}</button>)}</div>
       {marquee === null ? null : <div className="kd-selection-marquee" style={{ left: marquee.x, top: marquee.y, width: marquee.width, height: marquee.height }} />}
-      <button className="kd-trash-icon" data-full={trash.length > 0 || undefined} title={trash.length === 0 ? 'Trash is empty' : `${trash.length} desktop aliases in Trash`} onDragOver={event => { if (event.dataTransfer.types.includes('application/x-s7r-desktop-item')) { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move' } }} onDrop={dropOnTrash} onDoubleClick={openTrash}><AppIcon app="trash" /><span>Trash</span></button>
+      <button className="kd-trash-icon" data-full={trash.length > 0 || undefined} data-balloon={trash.length === 0 ? 'Trash is empty' : `${trash.length} desktop aliases in Trash`} onDragOver={event => { if (event.dataTransfer.types.includes('application/x-s7r-desktop-item')) { event.preventDefault(); event.stopPropagation(); event.dataTransfer.dropEffect = 'move' } }} onDrop={dropOnTrash} onDoubleClick={openTrash} onContextMenu={event => { showContextMenu(event, [{ kind: 'heading', label: 'Trash' }, { label: 'Open', action: openTrash }, { label: 'Empty Trash…', disabled: trash.length === 0, action: () => { setConfirmEmptyTrash(true) } }, { kind: 'separator' }, { label: 'Get Info', action: () => { setInfo({ title: 'Trash Info', fields: [{ label: 'Kind', value: 'S7R Alias Trash' }, { label: 'Items', value: String(trash.length) }, { label: 'Contains', value: 'Desktop aliases only' }, { label: 'Original files', value: 'Never deleted' }] }) } }]) }}><AppIcon app="trash" /><span>Trash</span></button>
       <div className="kd-desk-mark" aria-hidden="true"><span>S7R</span><small><span>{desktopSize.width} × {desktopSize.height}</span><span>{preferences.pixelScale}× · {preferences.baseFontSize}px</span></small></div>
       <div className="kd-notifications" aria-live="polite">{notices.map(notice => <button key={notice.id} onClick={() => { setNotices(current => current.filter(item => item.id !== notice.id)); focusOrOpenAgent(notice.sessionId) }}><strong>Agent finished</strong><span>{notice.title}</span></button>)}</div>
       {desktop.windows.map(window => <SystemWindow key={window.id} window={window} active={desktop.activeId === window.id} baseFontSize={preferences.baseFontSize} pixelScale={preferences.pixelScale} onFocus={() => { dispatch({ type: 'focus', id: window.id }) }} onClose={() => { requestClose(window.id) }} onMove={(x, y) => { dispatch({ type: 'move', id: window.id, x, y, workArea }) }} onResize={(width, height) => { dispatch({ type: 'resize', id: window.id, width, height, workArea }) }} onZoom={() => { dispatch({ type: 'zoom', id: window.id, workArea }) }} onCollapse={() => { dispatch({ type: 'collapse', id: window.id }) }}>{contentFor(window)}</SystemWindow>)}
+      {contextMenu === null ? null : <ContextMenu model={contextMenu} desktopSize={desktopSize} onClose={() => { setContextMenu(null) }} />}
+      <BalloonHelp enabled={balloonHelp} desktopRef={desktopRef} desktopSize={desktopSize} pixelScale={preferences.pixelScale} menuHeight={metrics.menuBarHeight} blocked={contextMenu !== null || pendingClose !== null || pendingFolderShortcut !== null || confirmEmptyTrash || info !== null || contextRename !== null || contextArchive !== null || help || about || operationError !== null} />
+      {info === null ? null : <SystemDialog title={info.title} onClose={() => { setInfo(null) }}><dl className="kd-info-grid">{info.fields.map(field => <div key={field.label}><dt>{field.label}</dt><dd>{field.value}</dd></div>)}</dl><div className="kd-dialog-actions"><SystemButton onClick={() => { setInfo(null) }}>OK</SystemButton></div></SystemDialog>}
+      {contextRename === null ? null : <SystemDialog title="Rename Agent" onClose={() => { setContextRename(null) }}><label htmlFor="kd-context-rename">Agent name</label><SystemInput id="kd-context-rename" autoFocus value={contextRenameDraft} onChange={event => { setContextRenameDraft(event.currentTarget.value) }} /><div className="kd-dialog-actions"><SystemButton onClick={() => { setContextRename(null) }}>Cancel</SystemButton><SystemButton disabled={contextRenameDraft.trim() === ''} onClick={() => { const pending = contextRename; void renameSession(pending.sessionId, contextRenameDraft.trim()).then(() => { setContextRename(null) }, reason => { setContextRename(null); setOperationError(errorMessage(reason)) }) }}>Rename</SystemButton></div></SystemDialog>}
+      {contextArchive === null ? null : <SystemDialog title="Archive Agent" onClose={() => { setContextArchive(null) }}><p>Move “{contextArchive.title}” to S7R’s reversible archive?</p><p className="kd-muted">The DSH session and its durable history remain unchanged.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setContextArchive(null) }}>Cancel</SystemButton><SystemButton onClick={() => { const pending = contextArchive; void archiveSession(pending.sessionId).then(() => { setContextArchive(null) }, reason => { setContextArchive(null); setOperationError(errorMessage(reason)) }) }}>Archive</SystemButton></div></SystemDialog>}
       {pendingClose === null ? null : <SystemDialog title="Unsaved Changes" onClose={() => { setPendingClose(null) }}><p>This document has changes that have not been saved.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setPendingClose(null) }}>Cancel</SystemButton><SystemButton onClick={() => { const id = pendingClose; setPendingClose(null); dirty.current.delete(id); dispatch({ type: 'close', id }) }}>Discard Changes</SystemButton></div></SystemDialog>}
       {pendingFolderShortcut === null ? null : <SystemDialog title="Folder Shortcut" onClose={() => { setPendingFolderShortcut(null) }}><p>How should “{pendingFolderShortcut.item.label}” behave on the desktop?</p><p className="kd-muted"><strong>Finder Alias</strong> opens this directory inside its existing Workspace. <strong>Workspace Alias</strong> registers this directory as a Workspace and connects an Agent.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setPendingFolderShortcut(null) }}>Cancel</SystemButton><SystemButton onClick={() => { const pending = pendingFolderShortcut; putDesktopItem({ ...pending.item, folderAction: 'browse' }, pending); setPendingFolderShortcut(null) }}>Finder Alias</SystemButton><SystemButton onClick={() => { const pending = pendingFolderShortcut; putDesktopItem({ ...pending.item, folderAction: 'workspace' }, pending); setPendingFolderShortcut(null) }}>Workspace Alias</SystemButton></div></SystemDialog>}
       {confirmEmptyTrash ? <SystemDialog title="Empty Trash" onClose={() => { setConfirmEmptyTrash(false) }}><p>Permanently remove {trash.length} S7R desktop {trash.length === 1 ? 'alias' : 'aliases'} from Trash?</p><p className="kd-muted">No real file, folder, Workspace, Agent history, or Scrapbook card will be deleted.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setConfirmEmptyTrash(false) }}>Cancel</SystemButton><SystemButton onClick={() => { setTrash([]); setConfirmEmptyTrash(false) }}>Empty Trash</SystemButton></div></SystemDialog> : null}
-      {help ? <SystemDialog title="S7R Guide" onClose={() => { setHelp(false) }}><div className="kd-help-guide"><p>S7R puts DSH inside a compact System 7-style desktop.</p><ol><li>Start with <strong>File → Choose Folder…</strong>. Knowledge Desk then reopens Workspaces and Agents; its Archived tab restores S7R-archived conversations.</li><li>Use <strong>File → Find…</strong> to search file names, source contents, Agent messages, or every event stream.</li><li>Drag Workspaces, Agents, Finder items, or one Scrapbook card onto the desktop. Drag empty desktop space to marquee-select several aliases, then drag one selected alias to move the group.</li><li>Delete selected aliases or drag them to the bottom-right <strong>Trash</strong>. Open Trash to Put Away items; use <strong>Special → Empty Trash…</strong> for permanent removal of aliases. Real project files are never deleted.</li><li>Drop a path into an Agent: paths inside its project become relative; paths outside stay absolute. Use <strong>Context</strong> for context management and <strong>Other…</strong> for rename, export, archive, desktop placement, and Markdown rendering.</li><li>Double-click Finder items to open them. Save TextEdit documents with <strong>File → Save</strong>; <strong>File → New Terminal</strong> starts zsh. Monitor’s Background tab shows DSH jobs.</li><li>Use <strong>S7R → Settings…</strong> for the DeepSeek API key and <strong>Display Control Panel</strong> for scale, filters, and wallpaper.</li><li>Use <strong>Window</strong> to focus, tile, zoom, or collapse windows.</li></ol><p className="kd-muted">Window positions, desktop items, Trash, and the Markdown preference return after reload. Live Terminal windows intentionally do not, because their PTYs cannot be safely reattached. Browser-owned shortcuts may control the browser tab, so use S7R’s menus for reliable commands.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setHelp(false) }}>OK</SystemButton></div></div></SystemDialog> : null}
+      {help ? <SystemDialog title="S7R Guide" onClose={() => { setHelp(false) }}><div className="kd-help-guide"><p>S7R puts DSH inside a compact System 7-style desktop.</p><ol><li>Start with <strong>File → Choose Folder…</strong>. Knowledge Desk then reopens Workspaces and Agents; its Archived tab restores S7R-archived conversations.</li><li>Use <strong>File → New from Stationery…</strong> to create an Agent from a real DSH Agent Preset. Use <strong>S7R → DSH Control Center…</strong> for models, reasoning, Presets, commands/modes, Skills, and authoritative plugin status.</li><li>Right-click desktop aliases, Finder items, Workspaces, or Agents for Open, path copy, desktop placement, Get Info, rename/export/archive, and alias deletion. S7R never deletes a real project file from these menus.</li><li>Use <strong>File → Find…</strong> to search file names, source contents, Agent messages, or every event stream.</li><li>Drag Workspaces, Agents, Finder items, or one Scrapbook card onto the desktop. Drag empty desktop space to marquee-select several aliases, then drag one selected alias to move the group.</li><li>Delete selected aliases or drag them to the bottom-right <strong>Trash</strong>. Open Trash to Put Away items; use <strong>Special → Empty Trash…</strong> for permanent removal of aliases. Real project files are never deleted.</li><li>Drop a path into an Agent: paths inside its project become relative; paths outside stay absolute. Use <strong>Context</strong> for context management and <strong>Other…</strong> for DSH controls, rename, export, archive, desktop placement, and Markdown rendering.</li><li>Turn on <strong>Help → Show Balloon Help</strong>, then pause over marked controls. Balloons are positioned in logical desktop coordinates, so both 1× and 2× use the same sharp, bounded layout.</li><li>Double-click Finder items to open them. Save TextEdit documents with <strong>File → Save</strong>; <strong>File → New Terminal</strong> starts zsh. Monitor’s Background tab shows DSH jobs.</li><li>Use <strong>S7R → Settings…</strong> for the DeepSeek API key and <strong>Display Control Panel</strong> for scale, filters, and wallpaper.</li></ol><p className="kd-muted">Window positions, desktop items, Trash, Balloon Help, and the Markdown preference return after reload. Live Terminal windows intentionally do not, because their PTYs cannot be safely reattached. Plugin inventory is read-only in DSH rc.7, so S7R does not fake enable switches.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setHelp(false) }}>OK</SystemButton></div></div></SystemDialog> : null}
       {about ? <SystemDialog title="About S7R" onClose={() => { setAbout(false) }}><div className="kd-about"><div className="kd-welcome-mark">S7R</div><h2>S7R</h2><p>System 7 Reimagined — a workstation shell for DeepSeek Harness.</p><p className="kd-small">Original implementation. No Apple assets are included.</p><SystemButton onClick={() => { setAbout(false) }}>OK</SystemButton></div></SystemDialog> : null}
       {operationError === null ? null : <SystemDialog title="S7R" onClose={() => { setOperationError(null) }}><p>{operationError}</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setOperationError(null) }}>OK</SystemButton></div></SystemDialog>}
     </main></div></div>

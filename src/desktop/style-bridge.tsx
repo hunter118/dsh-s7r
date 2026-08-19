@@ -2,9 +2,10 @@ import { ACCESSORY_STYLES } from '../apps/accessories/styles.ts'
 import { FILE_APP_STYLES } from '../apps/files/styles.ts'
 import { KNOWLEDGE_DESK_STYLES } from '../apps/knowledge-desk/styles.ts'
 import { FIND_STYLES } from '../apps/find/styles.ts'
+import { DSH_APP_STYLES } from '../apps/dsh/styles.ts'
 
 export function AppStylesBridge() {
-  return <style>{KNOWLEDGE_DESK_STYLES + FILE_APP_STYLES + FIND_STYLES + DESKTOP_STYLES}</style>
+  return <style>{KNOWLEDGE_DESK_STYLES + FILE_APP_STYLES + FIND_STYLES + DSH_APP_STYLES + DESKTOP_STYLES}</style>
 }
 
 export function AccessoriesStylesBridge() {
@@ -29,6 +30,14 @@ const DESKTOP_STYLES = String.raw`
 .kd-trash-icon .s7-app-icon { width: calc(var(--s7-icon) * 1.25); height: calc(var(--s7-icon) * 1.1); font-size: max(7px,var(--s7-small-font)); }
 .kd-trash-icon[data-full="true"] .s7-app-icon { border-top-width: calc(var(--s7-gap) + 2px); background: var(--s7-mid); }
 .kd-window[data-app="scrapbook"] { min-width: min(calc(var(--s7-font-size) * 40),calc(100% - 4px)); }
+.kd-window[data-app="dsh-control"] { min-width: min(calc(var(--s7-font-size) * 42),calc(100% - 4px)); }
+.kd-window[data-app="stationery"] { min-width: min(calc(var(--s7-font-size) * 34),calc(100% - 4px)); }
+.kd-info-grid { margin: 0; display: grid; gap: 1px; border: 1px solid var(--s7-dark); }
+.kd-info-grid > div { display: grid; grid-template-columns: minmax(calc(var(--s7-font-size) * 8),auto) 1fr; border-bottom: 1px dotted var(--s7-dark); }
+.kd-info-grid > div:last-child { border-bottom: 0; }
+.kd-info-grid dt,.kd-info-grid dd { margin: 0; padding: var(--s7-gap); overflow-wrap: anywhere; }
+.kd-info-grid dt { background: var(--s7-mid); border-right: 1px solid var(--s7-dark); }
+.kd-info-grid dd { user-select: text; background: var(--s7-white); }
 .kd-notifications { position: absolute; right: calc(var(--s7-gap) * 2); top: calc(var(--s7-menu-height) + var(--s7-gap)); z-index: 10020; display: grid; gap: 2px; width: calc(var(--s7-font-size) * 18); }
 .kd-notifications button { display: grid; gap: 1px; padding: var(--s7-pad); border: 2px solid var(--s7-ink); background: var(--s7-surface); box-shadow: inset 1px 1px 0 var(--s7-white),2px 2px 0 var(--s7-dark); font: inherit; text-align: left; }
 .kd-notifications button:active { background: var(--s7-ink); color: var(--s7-white); }

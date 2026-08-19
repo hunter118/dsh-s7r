@@ -4,7 +4,7 @@ import { DshClientAdapter } from '../dsh-compat/client.ts'
 import { DesktopRoot } from '../desktop/Desktop.tsx'
 import { installSystem7Styles } from '../system7/styles.ts'
 
-export const inject = ['slots', 'sessions', 'workspaces', 'connection']
+export const inject = ['slots', 'sessions', 'workspaces', 'connection', 'remote', 'remote.commands', 'remote.pluginInventory']
 
 export function apply(ctx: ClientContext): void {
   const adapter = new DshClientAdapter(ctx)

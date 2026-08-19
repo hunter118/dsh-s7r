@@ -49,12 +49,12 @@ export function SystemWindow({ window, active, baseFontSize, pixelScale, childre
       }}
       onPointerUp={event => { if (drag.current?.pointerId === event.pointerId) { drag.current = null; event.currentTarget.releasePointerCapture(event.pointerId) } }}
     >
-      <button className="kd-close" aria-label={`Close ${window.title}`} onClick={event => { event.stopPropagation(); onClose() }} />
+      <button className="kd-close" aria-label={`Close ${window.title}`} data-balloon={`Close ${window.title}`} onClick={event => { event.stopPropagation(); onClose() }} />
       <span className="kd-title">{window.title}</span>
-      <span className="kd-title-controls"><button className="kd-collapse" aria-label={collapsed ? 'Expand window' : 'Collapse window'} onClick={event => { event.stopPropagation(); onCollapse() }}>—</button><button className="kd-zoom" aria-label="Zoom window" onClick={event => { event.stopPropagation(); onZoom() }} /></span>
+      <span className="kd-title-controls"><button className="kd-collapse" aria-label={collapsed ? 'Expand window' : 'Collapse window'} data-balloon={collapsed ? 'Expand this window' : 'Collapse this window to its title bar'} onClick={event => { event.stopPropagation(); onCollapse() }}>—</button><button className="kd-zoom" aria-label="Zoom window" data-balloon="Zoom or restore this window" onClick={event => { event.stopPropagation(); onZoom() }} /></span>
     </header>
     <div className="kd-window-body">{children}</div>
-    {!collapsed && window.resizable !== false ? <div className="kd-resizer"
+    {!collapsed && window.resizable !== false ? <div className="kd-resizer" data-balloon="Drag to resize this window"
       onPointerDown={event => {
         event.preventDefault(); event.stopPropagation(); event.currentTarget.setPointerCapture(event.pointerId); onFocus()
         resize.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, width: window.bounds.width, height: window.bounds.height }

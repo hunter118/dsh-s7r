@@ -26,6 +26,7 @@ export interface DesktopPersistence {
   trash: TrashedShortcutRecord[]
   renderMarkdown: boolean
   agentMenuLimit: AgentMenuLimit
+  balloonHelp: boolean
 }
 
 export type AgentMenuLimit = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
@@ -33,7 +34,7 @@ export const DEFAULT_AGENT_MENU_LIMIT: AgentMenuLimit = 5
 
 export const DESKTOP_STORAGE_KEY = 's7r.desktop.v1'
 
-const APP_IDS: readonly AppId[] = ['knowledge-desk', 'finder', 'textedit', 'preview', 'terminal', 'timeline', 'scrapbook', 'clock', 'puzzle', 'monitor', 'settings', 'control-panel', 'find', 'trash']
+const APP_IDS: readonly AppId[] = ['knowledge-desk', 'finder', 'textedit', 'preview', 'terminal', 'timeline', 'scrapbook', 'clock', 'puzzle', 'monitor', 'settings', 'control-panel', 'find', 'trash', 'dsh-control', 'stationery']
 
 function finite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
@@ -97,6 +98,7 @@ export const EMPTY_DESKTOP_PERSISTENCE: DesktopPersistence = Object.freeze({
   trash: [],
   renderMarkdown: true,
   agentMenuLimit: DEFAULT_AGENT_MENU_LIMIT,
+  balloonHelp: false,
 })
 
 export function readDesktopPersistence(storage: Pick<Storage, 'getItem'> | undefined): DesktopPersistence {
@@ -115,11 +117,12 @@ export function readDesktopPersistence(storage: Pick<Storage, 'getItem'> | undef
     const agentMenuLimit = value.version === 2 && Number.isInteger(value.agentMenuLimit) && Number(value.agentMenuLimit) >= 1 && Number(value.agentMenuLimit) <= 9
       ? value.agentMenuLimit as AgentMenuLimit
       : DEFAULT_AGENT_MENU_LIMIT
+    const balloonHelp = value.version === 2 && typeof value.balloonHelp === 'boolean' ? value.balloonHelp : false
     const windows = state.windows.filter(window => window.appId !== 'terminal')
     const activeId = windows.some(window => window.id === state.activeId) ? state.activeId : undefined
     const liveIds = new Set(windows.map(window => window.id))
     const layoutRestore = state.layoutRestore?.filter(entry => liveIds.has(entry.id))
-    return { version: 2, desktop: { windows, nextId: state.nextId, nextZ: state.nextZ, ...(activeId === undefined ? {} : { activeId }), ...(layoutRestore === undefined || layoutRestore.length === 0 ? {} : { layoutRestore }) }, shortcuts: value.shortcuts, archivedAgents: value.archivedAgents, trash, renderMarkdown, agentMenuLimit }
+    return { version: 2, desktop: { windows, nextId: state.nextId, nextZ: state.nextZ, ...(activeId === undefined ? {} : { activeId }), ...(layoutRestore === undefined || layoutRestore.length === 0 ? {} : { layoutRestore }) }, shortcuts: value.shortcuts, archivedAgents: value.archivedAgents, trash, renderMarkdown, agentMenuLimit, balloonHelp }
   } catch {
     return EMPTY_DESKTOP_PERSISTENCE
   }

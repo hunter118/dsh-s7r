@@ -20,9 +20,10 @@ export interface FinderAppProps {
   initialPath?: string | undefined
   onOpenFile: (sessionId: string, path: string) => void
   onOpenTerminal: (sessionId: string, cwd: string) => void
+  onContextMenuEntry?: ((event: React.MouseEvent<HTMLElement>, entry: FileEntryView, currentPath: string) => void) | undefined
 }
 
-export function FinderApp({ adapter, sessionId, initialPath, onOpenFile, onOpenTerminal }: FinderAppProps) {
+export function FinderApp({ adapter, sessionId, initialPath, onOpenFile, onOpenTerminal, onContextMenuEntry }: FinderAppProps) {
   const [listing, setListing] = useState<FileListingView | null>(null)
   const [path, setPath] = useState(initialPath ?? '')
   const [selected, setSelected] = useState<string | null>(null)
@@ -55,7 +56,7 @@ export function FinderApp({ adapter, sessionId, initialPath, onOpenFile, onOpenT
     {error === null ? null : <div className="s7-inline-error">{error}</div>}
     <div className="kd-finder-head"><span>Name</span><span>Kind</span><span>Size</span></div>
     <ul className="kd-list kd-scroll kd-finder-list">
-      {listing?.entries.map(entry => <li draggable={entry.type === 'file' || entry.type === 'directory'} onDragStart={event => { if (entry.type === 'file' || entry.type === 'directory') writeDragItem(event.dataTransfer, { kind: 'path', label: entry.name, sessionId, path: entry.path, pathType: entry.type }) }} key={entry.path} className="kd-list-row kd-finder-row" data-selected={selected === entry.path} onClick={() => { setSelected(entry.path) }} onDoubleClick={() => { open(entry) }}>
+      {listing?.entries.map(entry => <li draggable={entry.type === 'file' || entry.type === 'directory'} onDragStart={event => { if (entry.type === 'file' || entry.type === 'directory') writeDragItem(event.dataTransfer, { kind: 'path', label: entry.name, sessionId, path: entry.path, pathType: entry.type }) }} key={entry.path} className="kd-list-row kd-finder-row" data-selected={selected === entry.path} onClick={() => { setSelected(entry.path) }} onDoubleClick={() => { open(entry) }} onContextMenu={event => { setSelected(entry.path); onContextMenuEntry?.(event, entry, listing?.path ?? path) }}>
         <span><AppIcon app={entry.type === 'directory' ? 'folder' : 'file'} /><strong>{entry.name}</strong></span><span>{entry.type}</span><span>{formatBytes(entry.size)}</span>
       </li>)}
       {listing !== null && listing.entries.length === 0 ? <li className="kd-empty">This folder is empty.</li> : null}

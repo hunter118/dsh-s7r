@@ -18,6 +18,8 @@ export interface MenuBarProps {
   agentMenuLimit: number
   onAccessory: (app: 'scrapbook' | 'clock' | 'puzzle' | 'monitor' | 'control-panel') => void
   onSettings: () => void
+  onDshControl: () => void
+  onStationery: () => void
   onNewAgent: () => void
   onChooseFolder: () => void
   onOpenAgents: () => void
@@ -40,6 +42,8 @@ export interface MenuBarProps {
   onFocusAgent: (id: string) => void
   onStopAgent: (id: string) => void
   onHelp: () => void
+  balloonHelp: boolean
+  onBalloonHelpChange: (enabled: boolean) => void
   onAbout: () => void
 }
 
@@ -76,6 +80,7 @@ export function MenuBar(props: MenuBarProps) {
   const desk: MenuItem[] = [
     { label: 'About S7R…', action: props.onAbout }, { separator: true },
     { label: 'Settings…', action: props.onSettings },
+    { label: 'DSH Control Center…', action: props.onDshControl },
     { label: 'Scrapbook', action: () => { props.onAccessory('scrapbook') } },
     { label: 'Clock', action: () => { props.onAccessory('clock') } },
     { label: 'Puzzle', action: () => { props.onAccessory('puzzle') } },
@@ -84,6 +89,7 @@ export function MenuBar(props: MenuBarProps) {
   ]
   const file: MenuItem[] = [
     { label: 'New Agent', action: props.onNewAgent },
+    { label: 'New from Stationery…', action: props.onStationery },
     { label: 'Open Agent…', action: props.onOpenAgents },
     { label: 'Choose Folder…', action: props.onChooseFolder },
     { label: 'Browse Current Workspace', action: props.onOpenFinder },
@@ -118,8 +124,13 @@ export function MenuBar(props: MenuBarProps) {
     { label: `Open Trash${props.trashCount === 0 ? '' : ` (${props.trashCount})`}`, action: props.onOpenTrash },
     { label: 'Empty Trash…', disabled: props.trashCount === 0, action: props.onEmptyTrash },
   ]
+  const helpItems: MenuItem[] = [
+    { label: 'Show Balloon Help', checked: props.balloonHelp, action: () => { props.onBalloonHelpChange(!props.balloonHelp) } },
+    { separator: true },
+    { label: 'S7R Guide…', action: props.onHelp },
+  ]
   return <nav className="kd-menu-bar" aria-label="Global menu bar" onPointerDown={event => { event.stopPropagation() }}>
-    <Menu id="desk" label="S7R" items={desk} open={open} setOpen={setOpen} /><Menu id="file" label="File" items={file} open={open} setOpen={setOpen} /><Menu id="edit" label="Edit" items={editItems} open={open} setOpen={setOpen} /><Menu id="view" label="View" items={view} open={open} setOpen={setOpen} /><Menu id="window" label="Window" items={windowItems} open={open} setOpen={setOpen} /><Menu id="special" label="Special" items={special} open={open} setOpen={setOpen} /><Menu id="help" label="Help" items={[{ label: 'S7R Guide…', action: props.onHelp }]} open={open} setOpen={setOpen} /><span className="kd-menu-clock">{props.clock}</span>
+    <Menu id="desk" label="S7R" items={desk} open={open} setOpen={setOpen} /><Menu id="file" label="File" items={file} open={open} setOpen={setOpen} /><Menu id="edit" label="Edit" items={editItems} open={open} setOpen={setOpen} /><Menu id="view" label="View" items={view} open={open} setOpen={setOpen} /><Menu id="window" label="Window" items={windowItems} open={open} setOpen={setOpen} /><Menu id="special" label="Special" items={special} open={open} setOpen={setOpen} /><Menu id="help" label="Help" items={helpItems} open={open} setOpen={setOpen} /><span className="kd-menu-clock">{props.clock}</span>
   </nav>
 }
 

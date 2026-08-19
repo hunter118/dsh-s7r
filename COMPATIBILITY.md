@@ -18,6 +18,9 @@ These notes list every seam whose movement could require an adapter change.
 | Sessions | `ctx.sessions` / `SessionRuntime` / `SessionFace` | Create/open/bind/prompt/cancel/load older/read attachment | Snapshot or node union changes affect the client adapter and Knowledge Desk render switch. Unknown nodes currently remain inspectable as JSON. |
 | Workspaces | `ctx.workspaces` / `IWorkspaces` | Native folder pick, Workspace registration, blank-session reuse, session connection, and observation of native archive IDs | Directory-picker or Workspace ID changes affect only the browser compatibility adapter and Knowledge Desk. New S7R archive actions deliberately use a reversible local hide layer. |
 | Credentials | `ctx.connection.api.credentials` | Value-free `describe` plus write-only `set`/`unset` for `DEEPSEEK_API_KEY` | The saved value never crosses back to the browser. Credential wire changes affect only the browser adapter and Settings app. |
+| Agent Presets | `ctx.connection.api.agentPresets` and `sessions.create({ agentPreset })` | Stationery creation plus blank-session composition | Preset identifiers/descriptions and blank-only mutation remain DSH-owned. Schema or lock-rule changes affect the client adapter and the two DSH applications. |
+| Models and Skills | `ctx.connection.api.sessions.models/selectModel` and `skills.list` | Per-Agent model/reasoning route plus project Skill catalog | Cold sessions may not have an attached Skill project; S7R keeps other catalogs usable and labels the empty/cold boundary. |
+| Commands and plugins | `ctx.remote.commands` and `ctx.remote.pluginInventory` | Agent slash commands/modes and loader inventory | Plugin inventory is read-only in rc.7. Remote namespace or result-envelope changes affect only the browser compatibility adapter. |
 | Connection | `ctx.connection.rpc.handle/call` | Logical `/knowledge-desk` endpoint | RPC envelope or authority API changes affect `src/dsh-compat`. |
 | Agents | `ctx.agents.list/get` and public `Agent` state | Monitor, timeline ownership, file/terminal authority | A roster/status rename affects the host adapter only. |
 | Event ledger | `Agent.session.events` | Complete Timeline/export/Find, estimated context categories, and provider-reported context pressure/capacity | If DSH moves live events behind a projection service, replace those host endpoints. |
@@ -41,6 +44,10 @@ These notes list every seam whose movement could require an adapter change.
 ### Agent unarchive
 
 DSH rc.7 publishes `archiveSession` but no supported unarchive operation. S7R 0.6 therefore does not send new archive actions into that one-way API: it records a reversible local hidden-session entry and leaves the DSH session and event log unchanged. Older session IDs already present in DSH's native archive catalog are labelled in Knowledge Desk and cannot be restored without a future public DSH seam. This is kept separate from exported conversation data and is never presented as deletion.
+
+### Plugin mutation
+
+DSH rc.7 exposes the plugin loader inventory to browser clients but no supported transactional enable/disable operation. S7R therefore reports module, entry, configured enabled state, and current fiber phase without offering switches. Installing or changing DSH plugins remains a DSH profile-management operation.
 
 ### Terminal transport
 

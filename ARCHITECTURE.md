@@ -19,6 +19,10 @@ Each `SystemWindow` uses the same square chrome. Pointer capture makes drag/resi
 
 The menu bar receives the active window and application callbacks. Window commands therefore have one state owner and menu enablement cannot diverge from the displayed desktop.
 
+Context menus are desktop-owned overlays expressed in logical coordinates. Their model is assembled by object type, clamped after layout measurement, and supports Arrow/Home/End/Enter/Escape navigation plus focus restoration. Empty desktop, aliases, Trash, Workspace/Agent rows, and Finder entries all route through the same primitive; only aliases ever expose deletion.
+
+Balloon Help listens at the desktop root for marked controls rather than attaching a timer to every component. Pointer and focus coordinates are converted from viewport pixels by the exact magnification, then the measured balloon is flipped/clamped inside the logical work area. Pointer-down, wheel, resize, focus loss, menus, and modal dialogs suppress the overlay. The setting is persisted, but a visible balloon is ephemeral.
+
 The desktop object layer uses one private drag MIME record for Workspace, Agent, contained path, and Scrapbook-card references. Coordinates are stored in logical pixels and pointer drops divide by the exact 1×/2× magnification before clamping. A drag record may carry validated ids for the current multi-selection, so every selected alias moves by one shared logical delta. Marquee hit testing intersects logical icon rectangles and supports additive selection. Directory drops require an explicit Finder-alias versus Workspace-alias choice. Dropping a path into an Agent produces a cwd-relative reference whenever it is inside that Agent's cwd; outside paths remain absolute.
 
 Trash is deliberately an alias-only desktop service. Delete/Backspace and Trash drops move desktop records into a reversible persisted list; restoration reuses their logical locations. The Special menu owns confirmed Empty Trash and Clean Up Desktop. This layer never calls the DSH filesystem, session archive, or Scrapbook deletion APIs.
@@ -32,7 +36,11 @@ The browser adapter uses supported client services:
 - `ctx.sessions` / `SessionRuntime` for create, open, binding, prompt, steer, cancel, history pagination, live snapshots, and attachments;
 - `ctx.workspaces` for native host folder choice, Workspace registration, Workspace-owned session connection, and observing older DSH-native archive identifiers;
 - `ctx.connection.api.credentials` for value-free credential status and write-only `DEEPSEEK_API_KEY` set/unset;
+- `ctx.connection.api.sessions`, `agentPresets`, and `skills` for native session metadata, real model/reasoning selection, blank-session Preset composition, Agent Preset Stationery, and project Skill discovery;
+- `ctx.remote.commands` and `ctx.remote.pluginInventory` for Agent-scoped registered commands/modes and authoritative loader inventory;
 - `ctx.connection.rpc.call` for package-specific host operations.
+
+The native DSH Control Center treats those catalogs independently: a cold Agent whose project Skill service is not attached can still expose its session model route, commands, Preset metadata, and process-wide plugin inventory. Plugin inventory is read-only in rc.7, and the UI deliberately renders status rather than non-functional toggles.
 
 The host adapter uses supported host services:
 
