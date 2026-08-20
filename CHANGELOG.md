@@ -4,6 +4,8 @@ All notable user-facing changes to S7R are documented here. The project follows 
 
 ## Unreleased
 
+## 0.9.3 - 2026-08-20
+
 ### Added
 
 - A fixed New Agent setup window selects the DSH Agent Preset, provider model, and reasoning level before opening the conversation.
@@ -16,6 +18,10 @@ All notable user-facing changes to S7R are documented here. The project follows 
 - Balloon Help is gray in monochrome mode and softly tinted only in color mode.
 - Clock and Puzzle are fixed-size desk accessory windows and remain fixed when other windows are tiled.
 - The redundant View menu was removed; Clock and Puzzle now occupy a separated accessory group at the bottom of the S7R menu.
+
+### Fixed
+
+- Stationery Pad now keeps its action bar outside the scrolling form, so the Opening prompt field cannot show through beneath Choose Folder and Create Agent at either 1× or 2×.
 
 ## 0.9.2 - 2026-08-20
 

@@ -49,10 +49,10 @@ DSH remains the source of truth. S7R does not copy conversations into its own ch
 
 ### Prebuilt release
 
-Download `dsh-s7r-0.9.2.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
+Download `dsh-s7r-0.9.3.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
 
 ```sh
-dsh plugin --profile web add ./dsh-s7r-0.9.2.tgz
+dsh plugin --profile web add ./dsh-s7r-0.9.3.tgz
 dsh --profile web --dump-config
 dsh web
 ```

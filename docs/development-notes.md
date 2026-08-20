@@ -26,6 +26,7 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 - **0.9** completed object-level contextual menus, native DSH model/Preset/command/Skill/plugin surfaces, Agent Preset Stationery, and exact-scale Balloon Help.
 - **0.9.1** added native 8px small-text faces and removed larger-master downscaling from every semantic small-text surface.
 - **0.9.2** contained the long plugin inventory, unified DSH Control Center tab typography, and runtime-validated the compatibility boundary against the rc.8 source merge.
+- **0.9.3** added S7R-owned text editing menus, guided Agent setup, muted period color, coordinated blue-green wallpapers, fixed desk accessories, and a scale-safe Stationery action bar.
 
 ## Architecture decisions
 
@@ -39,13 +40,13 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 
 ## Verification summary
 
-The 0.9.2 release candidate has passed:
+The 0.9.3 release candidate has passed:
 
 - strict host and client TypeScript checks;
-- 17 Vitest files / 68 deterministic tests;
+- 17 Vitest files / 70 deterministic tests;
 - production host and self-contained client builds;
 - clean tarball installation into a disposable DSH Web profile;
-- build, isolated-profile install, and browser runtime checks against the official rc.8 source merge;
+- inherited the 0.9.2 isolated-profile rc.8 source-runtime validation documented in [`../COMPATIBILITY.md`](../COMPATIBILITY.md);
 - root replacement, multi-window focus/move/resize/zoom/collapse/tile/reflow;
 - Workspace choice, Agent creation/reopen/rename/export/archive/restore;
 - current-Workspace Agent grouping/filtering/sorting and Workspace-targeted creation;

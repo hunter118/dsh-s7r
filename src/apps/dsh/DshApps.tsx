@@ -63,15 +63,17 @@ export function StationeryPadApp({ adapter, workspaces, currentWorkspaceId, onCh
     <div className="kd-stationery-banner"><span className="kd-stationery-sheet" aria-hidden="true">AP</span><div><h2>DSH Agent Preset Stationery</h2><p>Create a fresh Agent with a real DSH composition. The Preset decides its model-facing plugins and tools.</p></div></div>
     {error === null ? null : <div className="s7-inline-error">{error}</div>}
     <SystemPanel title="Stationery">
-      <div className="kd-form-grid">
-        <label htmlFor="kd-stationery-workspace">Workspace</label><SystemSelect id="kd-stationery-workspace" data-balloon="The DSH Workspace that will own this Agent" value={workspaceId} onChange={event => { setWorkspaceId(event.currentTarget.value) }}><option value="">Choose a folder…</option>{workspaces.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</SystemSelect>
-        <label htmlFor="kd-stationery-preset">Agent Preset</label><SystemSelect id="kd-stationery-preset" data-balloon="Choose an installed DSH Agent composition" value={preset} onChange={event => { setPreset(event.currentTarget.value) }}><option value="">No usable Preset</option>{presets.map(item => <option key={item.id} value={item.id} disabled={item.broken !== undefined}>{presetLabel(item)}{item.broken === undefined ? '' : ' — Broken'}</option>)}</SystemSelect>
-        <label htmlFor="kd-stationery-title">Agent name</label><SystemInput id="kd-stationery-title" value={title} placeholder="Optional" onChange={event => { setTitle(event.currentTarget.value) }} />
+      <div className="kd-stationery-scroll">
+        <div className="kd-form-grid">
+          <label htmlFor="kd-stationery-workspace">Workspace</label><SystemSelect id="kd-stationery-workspace" data-balloon="The DSH Workspace that will own this Agent" value={workspaceId} onChange={event => { setWorkspaceId(event.currentTarget.value) }}><option value="">Choose a folder…</option>{workspaces.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</SystemSelect>
+          <label htmlFor="kd-stationery-preset">Agent Preset</label><SystemSelect id="kd-stationery-preset" data-balloon="Choose an installed DSH Agent composition" value={preset} onChange={event => { setPreset(event.currentTarget.value) }}><option value="">No usable Preset</option>{presets.map(item => <option key={item.id} value={item.id} disabled={item.broken !== undefined}>{presetLabel(item)}{item.broken === undefined ? '' : ' — Broken'}</option>)}</SystemSelect>
+          <label htmlFor="kd-stationery-title">Agent name</label><SystemInput id="kd-stationery-title" value={title} placeholder="Optional" onChange={event => { setTitle(event.currentTarget.value) }} />
+        </div>
+        {selectedPreset === undefined ? null : <div className="kd-native-description"><strong>{selectedPreset.name ?? selectedPreset.id}</strong><span>{selectedPreset.description ?? 'This Preset supplies no description.'}</span><small>{selectedPreset.trust === 'system' ? 'Shipped by this DSH deployment' : 'Locally authored Preset'}</small></div>}
+        <label htmlFor="kd-stationery-prompt">Opening prompt (optional)</label>
+        <SystemTextArea id="kd-stationery-prompt" rows={5} value={prompt} placeholder="The first task to send after creation…" onChange={event => { setPrompt(event.currentTarget.value) }} />
+        {notice === null ? null : <div className="kd-settings-notice" role="status">{notice}</div>}
       </div>
-      {selectedPreset === undefined ? null : <div className="kd-native-description"><strong>{selectedPreset.name ?? selectedPreset.id}</strong><span>{selectedPreset.description ?? 'This Preset supplies no description.'}</span><small>{selectedPreset.trust === 'system' ? 'Shipped by this DSH deployment' : 'Locally authored Preset'}</small></div>}
-      <label htmlFor="kd-stationery-prompt">Opening prompt (optional)</label>
-      <SystemTextArea id="kd-stationery-prompt" rows={5} value={prompt} placeholder="The first task to send after creation…" onChange={event => { setPrompt(event.currentTarget.value) }} />
-      {notice === null ? null : <div className="kd-settings-notice" role="status">{notice}</div>}
       <div className="kd-dialog-actions"><SystemButton disabled={busy} data-balloon="Register another folder as a DSH Workspace" onClick={() => { void onChooseFolder() }}>Choose Folder…</SystemButton><SystemButton disabled={busy || preset === '' || workspaceId === ''} data-balloon="Create a real DSH Agent from this Preset" onClick={() => { void create() }}>{busy ? 'Creating…' : 'Create Agent'}</SystemButton></div>
     </SystemPanel>
     <SystemStatusBar>{presets.filter(item => item.broken === undefined).length} usable DSH Agent Presets · no S7R-only composition is created</SystemStatusBar>

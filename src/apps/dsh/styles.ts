@@ -6,9 +6,10 @@ export const DSH_APP_STYLES = String.raw`
 .kd-stationery-banner { display: flex; align-items: center; gap: calc(var(--s7-gap) * 3); padding: calc(var(--s7-pad) * 2); border-bottom: 1px solid var(--s7-dark); background: var(--s7-light); }
 .kd-stationery-banner h2,.kd-stationery-banner p { margin: 0; }
 .kd-stationery-sheet { width: calc(var(--s7-font-size) * 4); height: calc(var(--s7-font-size) * 5); display: grid; place-items: center; border: 1px solid var(--s7-ink); background: var(--s7-white); box-shadow: 3px 3px 0 var(--s7-mid); font-family: var(--s7-mono); }
-.kd-stationery .s7-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--s7-gap); overflow: auto; }
+.kd-stationery .s7-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--s7-gap); overflow: hidden; }
+.kd-stationery-scroll { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--s7-gap); overflow: auto; overscroll-behavior: contain; }
 .kd-stationery .s7-textarea { width: 100%; flex: 1 1 auto; min-height: calc(var(--s7-font-size) * 6); }
-.kd-stationery .kd-dialog-actions { position: sticky; bottom: 0; margin-top: auto; padding-top: var(--s7-gap); background: var(--s7-surface); }
+.kd-stationery .kd-dialog-actions { position: relative; z-index: 1; flex: 0 0 auto; margin-top: 0; padding-top: var(--s7-gap); border-top: 1px solid var(--s7-dark); background: var(--s7-surface); }
 .kd-native-description { display: grid; gap: 1px; margin: var(--s7-gap) 0; padding: var(--s7-pad); border: 1px dotted var(--s7-dark); background: var(--s7-light); }
 .kd-native-description small { color: var(--s7-dark); }
 .kd-native-control > .kd-toolbar .s7-select { min-width: min(calc(var(--s7-font-size) * 24),55%); }
