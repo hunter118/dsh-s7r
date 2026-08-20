@@ -2,12 +2,24 @@
 
 ## Reference baseline
 
-- DSH package version: `0.1.0-rc.7`
-- Official repository commit: `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`
-- Reconnaissance date: 2026-08-17
+- Installed and runtime-tested DSH package version: `0.1.0-rc.7`
+- Runtime baseline commit: `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`
+- Source-runtime-tested upstream release merge: `0.1.0-rc.8` at `141eb6fef83422698aef7a981029e843e8161534`
+- Latest audit date: 2026-08-20
 - Node target: 22.19+ / 24+
 
 These notes list every seam whose movement could require an adapter change.
+
+## rc.8 source runtime validation
+
+At the verification date, the official source tree had merged the `0.1.0-rc.8` release while the npm registry still reported `0.1.0-rc.7`. The exact rc.8 commit was installed and built with Node 24, then launched through the official source CLI with S7R `0.9.2` installed into a clean, isolated Web profile. Browser checks covered root-slot replacement, Knowledge Desk, credential settings, the Display panel at 1x and 2x, and every DSH Control Center catalog. The authoritative loader inventory reported 142 entries and showed `dsh-s7r`, `@deepseek-ai/dsh-terminal`, and `@deepseek-ai/dsh-terminal-bash` enabled and active. No host runtime errors appeared after startup. This validates the supported adapter seams from source without pretending that an unpublished rc.8 package set is the normal install baseline.
+
+- DSH's client renderer moved from `@deepseek-ai/dsh-client-web-react` to `@deepseek-ai/dsh-client-ui-renderer`. S7R imports neither package; it mounts through the stable runtime and `dsh-client-ui-slots` boundary, so no renderer migration is required here.
+- Native command execution gained an image list and command descriptors gained optional `input.images`. S7R calls the public `SessionFace.command()` wrapper, which supplies the new empty image list in rc.8, and its compatibility view now preserves the optional metadata.
+- `SessionFace.prompt()` gained an optional abort signal. Existing S7R text prompt and steering calls remain source-compatible.
+- File-reference and session-reference remotes, attachment UI, and recall presentation are additive. S7R does not inject those optional remotes yet; its existing contained path drops remain text references and unknown future conversation records remain inspectable rather than crashing the renderer.
+- The official terminal backend gained explicit bash/pwsh dialect resolution. S7R's non-empty `/bin/zsh` path and `-f -i` arguments continue to win over dialect defaults, while its owner-scoped terminal service calls are unchanged.
+- The plugin inventory remote remains read-only, so S7R continues to report loader state without non-functional enable switches.
 
 ## Supported seams used
 

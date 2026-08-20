@@ -9,9 +9,9 @@ export const DSH_APP_STYLES = String.raw`
 .kd-native-description { display: grid; gap: 1px; margin: var(--s7-gap) 0; padding: var(--s7-pad); border: 1px dotted var(--s7-dark); background: var(--s7-light); }
 .kd-native-description small { color: var(--s7-dark); }
 .kd-native-control > .kd-toolbar .s7-select { min-width: min(calc(var(--s7-font-size) * 24),55%); }
-.kd-native-tabs { display: grid; grid-template-columns: 1.15fr 1.4fr .6fr 1fr; gap: 1px; padding: var(--s7-pad); border-bottom: 1px solid var(--s7-dark); background: var(--s7-mid); overflow: hidden; }
-.kd-native-tabs .s7-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: var(--s7-small-font)/var(--s7-small-line) var(--s7-small-face); }
-.kd-native-body { flex: 1 1 auto; min-height: 0; padding: var(--s7-gap); background: var(--s7-surface); }
+.kd-native-tabs { position: relative; z-index: 2; flex: 0 0 auto; display: grid; grid-template-columns: 1.15fr 1.4fr .6fr 1fr; gap: 1px; padding: var(--s7-pad); border-bottom: 1px solid var(--s7-dark); background: var(--s7-mid); overflow: hidden; }
+.kd-native-tabs .s7-button { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.kd-native-body { position: relative; z-index: 0; flex: 1 1 0; min-height: 0; overflow: auto; overscroll-behavior: contain; contain: layout paint; padding: var(--s7-gap); background: var(--s7-surface); }
 .kd-native-cards { display: grid; gap: var(--s7-gap); }
 .kd-native-cards > section { padding: var(--s7-pad); border: 1px solid var(--s7-dark); box-shadow: inset 1px 1px 0 var(--s7-white); background: var(--s7-light); }
 .kd-native-cards header { display: flex; align-items: center; gap: var(--s7-gap); border-bottom: 1px dotted var(--s7-dark); padding-bottom: 2px; }

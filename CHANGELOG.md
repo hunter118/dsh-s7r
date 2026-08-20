@@ -2,6 +2,18 @@
 
 All notable user-facing changes to S7R are documented here. The project follows semantic versioning while its DSH dependency remains in release-candidate status.
 
+## 0.9.2 - 2026-08-20
+
+### Changed
+
+- Built and browser-tested S7R against the official DSH `0.1.0-rc.8` source merge while retaining the published-package `0.1.0-rc.7` install baseline.
+- Preserved the new optional image-capability metadata on native DSH commands so it is not discarded by the S7R adapter.
+
+### Fixed
+
+- The long Plugins inventory is now clipped and scrolled inside the DSH Control Center body instead of painting over its toolbar or tabs.
+- Model & Preset, Commands & Modes, Skills, and Plugins tabs now use the same base bitmap font and control height as every other button.
+
 ## 0.9.1 - 2026-08-20
 
 ### Fixed

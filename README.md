@@ -16,7 +16,7 @@ S7R is an original System 7-era workstation shell for the [DeepSeek Harness](htt
 DSH remains the source of truth. S7R does not copy conversations into its own chat database, start an unrelated shell server, or expose arbitrary host paths. It presents the capabilities already owned by DSH and keeps only desktop preferences—window positions, aliases, display choices, Scrapbook cards, and similar UI state—in the browser.
 
 > [!IMPORTANT]
-> S7R currently targets DSH `0.1.0-rc.7` exactly. DSH is in developer preview and later releases may require adapter updates. See [Compatibility](#compatibility-and-known-limitations).
+> S7R's published-package runtime baseline is DSH `0.1.0-rc.7`. The adapter has also been built, installed, and browser-tested from the official `0.1.0-rc.8` source merge. At the verification date, rc.8 packages were not yet available from npm, so ordinary installs still resolve rc.7. DSH is in developer preview and later releases may require adapter updates. See [Compatibility](#compatibility-and-known-limitations).
 
 ## Feature map
 
@@ -49,10 +49,10 @@ DSH remains the source of truth. S7R does not copy conversations into its own ch
 
 ### Prebuilt release
 
-Download `dsh-s7r-0.9.1.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
+Download `dsh-s7r-0.9.2.tgz` from the [latest GitHub Release](https://github.com/hunter118/dsh-s7r/releases/latest), then install it into the DSH Web profile:
 
 ```sh
-dsh plugin --profile web add ./dsh-s7r-0.9.1.tgz
+dsh plugin --profile web add ./dsh-s7r-0.9.2.tgz
 dsh --profile web --dump-config
 dsh web
 ```
@@ -240,7 +240,7 @@ Please report credential exposure, path traversal, unsafe writes, terminal owner
 
 ## Compatibility and known limitations
 
-This release was developed against official DeepSeek Harness commit `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca` (`0.1.0-rc.7`, inspected 2026-08-17). Exact adapter seams are documented in [COMPATIBILITY.md](./COMPATIBILITY.md).
+This release is runtime-tested against official DeepSeek Harness commit `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca` (`0.1.0-rc.7`) and was also built, installed into a clean Web profile, and browser-tested from commit `141eb6fef83422698aef7a981029e843e8161534` (the `0.1.0-rc.8` release merge, verified 2026-08-20). Exact adapter seams and the rc.8 validation are documented in [COMPATIBILITY.md](./COMPATIBILITY.md).
 
 - DSH rc.7 has fixed backend PTY dimensions and no supported resize method or raw browser byte stream.
 - TextEdit is a robust plain text/code editor, not a language server or syntax-highlighting IDE.
@@ -256,7 +256,7 @@ pnpm check
 pnpm pack
 ```
 
-`pnpm check` runs strict host/client TypeScript checks, 65 deterministic tests, and production host/client bundles. PDF.js and its worker implementation are embedded so Preview needs no CDN or runtime network dependency.
+`pnpm check` runs strict host/client TypeScript checks, 68 deterministic tests, and production host/client bundles. PDF.js and its worker implementation are embedded so Preview needs no CDN or runtime network dependency.
 
 Project references:
 

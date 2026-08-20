@@ -49,6 +49,17 @@ describe('DSH compatibility boundary', () => {
     ])
   })
 
+  it('preserves rc.8 command image-capability metadata without bypassing SessionFace', async () => {
+    const adapter = new DshClientAdapter({
+      connection: { rpc: { call: async () => ({ ok: true, value: {} }) } },
+      sessions: {},
+      remote: { commands: { list: async () => ({ ok: true, value: [{ name: 'vision', description: 'Inspect images', input: { hint: 'prompt', images: true } }] }) } },
+    } as never)
+    await expect(adapter.listCommands('agent')).resolves.toEqual([
+      { name: 'vision', description: 'Inspect images', input: { hint: 'prompt', images: true } },
+    ])
+  })
+
   it('routes folder selection through the DSH workspace registry before opening its Agent', async () => {
     const calls: unknown[] = []
     const adapter = new DshClientAdapter({

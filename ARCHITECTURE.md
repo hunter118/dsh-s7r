@@ -40,7 +40,7 @@ The browser adapter uses supported client services:
 - `ctx.remote.commands` and `ctx.remote.pluginInventory` for Agent-scoped registered commands/modes and authoritative loader inventory;
 - `ctx.connection.rpc.call` for package-specific host operations.
 
-The native DSH Control Center treats those catalogs independently: a cold Agent whose project Skill service is not attached can still expose its session model route, commands, Preset metadata, and process-wide plugin inventory. Plugin inventory is read-only in rc.7, and the UI deliberately renders status rather than non-functional toggles.
+The native DSH Control Center treats those catalogs independently: a cold Agent whose project Skill service is not attached can still expose its session model route, commands, Preset metadata, and process-wide plugin inventory. Plugin inventory remains read-only through the rc.8 source runtime validation, and the UI deliberately renders status rather than non-functional toggles. Its command adapter preserves rc.8's optional image-capability metadata while invoking commands through `SessionFace.command()`, which owns the upstream execution-signature change.
 
 The host adapter uses supported host services:
 

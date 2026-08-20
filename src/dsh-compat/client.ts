@@ -29,7 +29,7 @@ export interface NativeSessionView {
 export interface NativeCommandView {
   name: string
   description: string
-  input?: { hint: string }
+  input?: { hint: string; images?: boolean }
 }
 
 export interface PluginInventoryEntryView {

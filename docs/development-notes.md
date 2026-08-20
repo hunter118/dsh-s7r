@@ -4,9 +4,10 @@ This is a concise engineering record for contributors. Release-facing changes ar
 
 ## Baseline
 
-- DSH target: `0.1.0-rc.7`
-- Reference commit: `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`
-- Reconnaissance date: 2026-08-17
+- Runtime-tested DSH target: `0.1.0-rc.7`
+- Runtime reference commit: `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`
+- Source-runtime-tested upstream merge: `0.1.0-rc.8` at `141eb6fef83422698aef7a981029e843e8161534`
+- Latest audit date: 2026-08-20
 - Node target: 22.19+ or 24+
 - Package manager: pnpm 11.19.0
 
@@ -24,6 +25,7 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 - **0.8** made Workspace selection and Agent browsing explicit, added non-disruptive stream following, contextual menus, an Agent switcher, and reversible window tiling.
 - **0.9** completed object-level contextual menus, native DSH model/Preset/command/Skill/plugin surfaces, Agent Preset Stationery, and exact-scale Balloon Help.
 - **0.9.1** added native 8px small-text faces and removed larger-master downscaling from every semantic small-text surface.
+- **0.9.2** contained the long plugin inventory, unified DSH Control Center tab typography, and runtime-validated the compatibility boundary against the rc.8 source merge.
 
 ## Architecture decisions
 
@@ -37,12 +39,13 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 
 ## Verification summary
 
-The 0.9.0 release candidate has passed:
+The 0.9.2 release candidate has passed:
 
 - strict host and client TypeScript checks;
-- 16 Vitest files / 65 deterministic tests;
+- 17 Vitest files / 68 deterministic tests;
 - production host and self-contained client builds;
 - clean tarball installation into a disposable DSH Web profile;
+- build, isolated-profile install, and browser runtime checks against the official rc.8 source merge;
 - root replacement, multi-window focus/move/resize/zoom/collapse/tile/reflow;
 - Workspace choice, Agent creation/reopen/rename/export/archive/restore;
 - current-Workspace Agent grouping/filtering/sorting and Workspace-targeted creation;
