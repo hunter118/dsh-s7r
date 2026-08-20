@@ -17,6 +17,7 @@ export type AppId =
   | 'trash'
   | 'dsh-control'
   | 'stationery'
+  | 'agent-setup'
 
 export interface Bounds {
   x: number

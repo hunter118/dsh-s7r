@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { LruCache } from '../src/display/cache.ts'
 import { MONO_PALETTE } from '../src/display/palettes.ts'
 import { nearestColor, quantizePixels } from '../src/display/quantize.ts'
-import { CAT_TILE_HEIGHT, CAT_TILE_WIDTH, catTilePlacements, pixelRasterPlan } from '../src/display/wallpaper.ts'
+import { CAT_TILE_HEIGHT, CAT_TILE_WIDTH, catTilePlacements, pixelRasterPlan, tintMutedTeal } from '../src/display/wallpaper.ts'
 
 describe('authentic display pipeline', () => {
   it('publishes the fixed monochrome Preview palette', () => {
@@ -37,6 +37,13 @@ describe('authentic display pipeline', () => {
     const result = quantizePixels(source, 'grayscale')
     expect([...result.data]).toEqual([54, 54, 54, 77])
     expect([...source.data]).toEqual([255, 0, 0, 77])
+  })
+
+  it('maps wallpaper tones into the restrained blue-green palette without changing alpha', () => {
+    const source = { width: 3, height: 1, data: new Uint8ClampedArray([0, 0, 0, 11, 128, 128, 128, 22, 255, 255, 255, 33]) }
+    const tinted = tintMutedTeal(source)
+    expect([...tinted.data]).toEqual([48, 79, 76, 11, 123, 146, 143, 22, 198, 213, 209, 33])
+    expect([...source.data]).toEqual([0, 0, 0, 11, 128, 128, 128, 22, 255, 255, 255, 33])
   })
 
   it('builds a low-resolution grid and exact integer-sized output blocks', () => {

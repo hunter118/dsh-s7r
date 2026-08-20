@@ -13,6 +13,26 @@ export interface PixelRasterPlan {
   outputHeight: number
 }
 
+export interface WallpaperPixelBuffer {
+  width: number
+  height: number
+  data: Uint8ClampedArray
+}
+
+const MUTED_TEAL_SHADOW = [48, 79, 76] as const
+const MUTED_TEAL_HIGHLIGHT = [198, 213, 209] as const
+
+export function tintMutedTeal(source: WallpaperPixelBuffer): WallpaperPixelBuffer {
+  const data = new Uint8ClampedArray(source.data)
+  for (let index = 0; index < data.length; index += 4) {
+    const tone = Math.round(data[index]! * 0.2126 + data[index + 1]! * 0.7152 + data[index + 2]! * 0.0722) / 255
+    data[index] = Math.round(MUTED_TEAL_SHADOW[0] + (MUTED_TEAL_HIGHLIGHT[0] - MUTED_TEAL_SHADOW[0]) * tone)
+    data[index + 1] = Math.round(MUTED_TEAL_SHADOW[1] + (MUTED_TEAL_HIGHLIGHT[1] - MUTED_TEAL_SHADOW[1]) * tone)
+    data[index + 2] = Math.round(MUTED_TEAL_SHADOW[2] + (MUTED_TEAL_HIGHLIGHT[2] - MUTED_TEAL_SHADOW[2]) * tone)
+  }
+  return { width: source.width, height: source.height, data }
+}
+
 export function pixelRasterPlan(sourceWidth: number, sourceHeight: number, maxEdge: number, pixelSize: WallpaperPixelSize): PixelRasterPlan {
   const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight))
   const targetWidth = Math.max(1, Math.round(sourceWidth * scale))
@@ -84,7 +104,7 @@ export async function buildSeamlessCatTile(spriteSource: string): Promise<string
   return canvas.toDataURL('image/png')
 }
 
-export async function filterWallpaperSource(source: string, mode: WallpaperFilterMode, maxEdge = MAX_WALLPAPER_EDGE, pixelSize: WallpaperPixelSize = 1): Promise<{ dataUrl: string; width: number; height: number; pixelSize: WallpaperPixelSize }> {
+export async function filterWallpaperSource(source: string, mode: WallpaperFilterMode, maxEdge = MAX_WALLPAPER_EDGE, pixelSize: WallpaperPixelSize = 1, tint?: 'muted-teal'): Promise<{ dataUrl: string; width: number; height: number; pixelSize: WallpaperPixelSize }> {
   const image = await loadImage(source)
   const plan = pixelRasterPlan(image.naturalWidth, image.naturalHeight, maxEdge, pixelSize)
   const lowCanvas = document.createElement('canvas')
@@ -95,7 +115,8 @@ export async function filterWallpaperSource(source: string, mode: WallpaperFilte
   lowContext.imageSmoothingEnabled = true
   lowContext.imageSmoothingQuality = 'high'
   lowContext.drawImage(image, 0, 0, plan.lowWidth, plan.lowHeight)
-  const filtered = quantizePixels(lowContext.getImageData(0, 0, plan.lowWidth, plan.lowHeight), mode)
+  const quantized = quantizePixels(lowContext.getImageData(0, 0, plan.lowWidth, plan.lowHeight), mode)
+  const filtered = tint === 'muted-teal' ? tintMutedTeal(quantized) : quantized
   const imageData = lowContext.createImageData(plan.lowWidth, plan.lowHeight)
   imageData.data.set(filtered.data)
   lowContext.putImageData(imageData, 0, 0)

@@ -70,6 +70,15 @@ describe('window manager', () => {
     expect(state.windows.filter(window => window.state !== 'collapsed')).toHaveLength(3)
   })
 
+  it('never resizes fixed-size accessories while tiling other windows', () => {
+    let state = windowReducer(EMPTY_DESKTOP_STATE, { type: 'open', appId: 'finder', title: 'Finder' })
+    state = windowReducer(state, { type: 'open', appId: 'clock', title: 'Clock', resizable: false })
+    state = windowReducer(state, { type: 'open', appId: 'puzzle', title: 'Puzzle', resizable: false })
+    const fixed = state.windows.slice(1).map(window => window.bounds)
+    state = windowReducer(state, { type: 'tile', workArea: area })
+    expect(state.windows.slice(1).map(window => window.bounds)).toEqual(fixed)
+  })
+
   it('restores the exact pre-tile layout without losing collapsed windows', () => {
     let state = EMPTY_DESKTOP_STATE
     for (let index = 0; index < 3; index += 1) state = windowReducer(state, { type: 'open', appId: 'finder', title: `F${index}` })

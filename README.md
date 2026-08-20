@@ -35,7 +35,7 @@ DSH remains the source of truth. S7R does not copy conversations into its own ch
 | **Desktop** | Restores window geometry and z-order; supports Workspace, Agent, Finder-item, and Scrapbook aliases; marquee selection; group dragging; and reversible alias-only Trash. |
 | **Contextual help** | Adds keyboard-accessible right-click menus and optional delayed Balloon Help whose positions stay sharp and bounded at exact 1×/2× magnification. |
 | **Scrapbook and accessories** | Captures editable conversation cards with one-click copy and desktop placement; includes Clock and a legally shuffled, always-solvable 4×4 Puzzle. |
-| **Display and wallpaper** | Offers Fit Browser or fixed logical work areas, 10px/12px bitmap UI masters, exact 1×/2× magnification, Preview filters, built-in patterns, a seamless Cat tile, and processed imported wallpaper. |
+| **Display and wallpaper** | Offers Fit Browser or fixed logical work areas, 10px/12px bitmap UI masters, exact 1×/2× magnification, monochrome or restrained-color System UI, Preview filters, coordinated blue-green built-in patterns, a seamless Cat tile, and processed imported wallpaper. |
 | **Credentials** | Reads only DSH's configured/source/writable status and writes `DEEPSEEK_API_KEY` through DSH's loopback credential service; the saved secret is never returned to the page. |
 
 ## Requirements

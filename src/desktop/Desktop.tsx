@@ -7,7 +7,7 @@ import { FinderApp, PreviewApp, TerminalApp, TextEditApp } from '../apps/files/F
 import type { FileEntryView } from '../dsh-compat/protocol.ts'
 import { KnowledgeDeskApp } from '../apps/knowledge-desk/KnowledgeDeskApp.tsx'
 import { FindApp } from '../apps/find/FindApp.tsx'
-import { DshControlApp, StationeryPadApp } from '../apps/dsh/DshApps.tsx'
+import { AgentSetupApp, DshControlApp, StationeryPadApp } from '../apps/dsh/DshApps.tsx'
 import { errorMessage, pathBasename, pathExtension } from '../apps/common.tsx'
 import { readDisplayPreferences, writeDisplayPreferences, type DisplayPreferences } from '../display/preferences.ts'
 import { desktopWorkArea, resolveDesktopSize, uiMetrics } from './resolution.ts'
@@ -26,26 +26,28 @@ import { moveShortcutGroup, normalizedSelectionRect, shortcutsInRect, type Selec
 import { ContextMenu, type ContextMenuItem, type ContextMenuModel } from '../system7/ContextMenu.tsx'
 import { BalloonHelp } from '../system7/BalloonHelp.tsx'
 import { toLogicalPoint } from '../system7/interaction-geometry.ts'
+import { captureEditableSnapshot, replaceEditableSelection, selectAllEditable, undoEditable, type EditableSnapshot } from '../system7/text-editing.ts'
 
 export type DesktopRootProps = PropsRuntime<'root'> & { adapter: DshClientAdapter }
 
 const CLASSIC_WALLPAPER = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='%23888'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23ddd'/%3E%3C/svg%3E")`
+const CLASSIC_COLOR_WALLPAPER = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='1' height='1' fill='%23607b77'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23d6e0dd'/%3E%3C/svg%3E")`
 interface RenderedCatWallpaper { dataUrl: string; width: number }
 const catWallpaperCache = new Map<string, Promise<RenderedCatWallpaper>>()
 let catTileSource: Promise<string> | undefined
 
-function loadCatWallpaper(mode: DisplayPreferences['wallpaperFilterMode'], pixelSize: DisplayPreferences['wallpaperPixelSize']): Promise<RenderedCatWallpaper> {
-  const key = `${mode}:${pixelSize}`
+function loadCatWallpaper(mode: DisplayPreferences['wallpaperFilterMode'], pixelSize: DisplayPreferences['wallpaperPixelSize'], appearance: DisplayPreferences['uiAppearance']): Promise<RenderedCatWallpaper> {
+  const key = `${mode}:${pixelSize}:${appearance}`
   const cached = catWallpaperCache.get(key)
   if (cached !== undefined) return cached
   catTileSource ??= buildSeamlessCatTile(catWallpaperSprite)
-  const pending = catTileSource.then(source => filterWallpaperSource(source, mode, 384, pixelSize)).then(value => ({ dataUrl: value.dataUrl, width: value.width }))
+  const pending = catTileSource.then(source => filterWallpaperSource(source, mode, 384, pixelSize, appearance === 'color' ? 'muted-teal' : undefined)).then(value => ({ dataUrl: value.dataUrl, width: value.width }))
   catWallpaperCache.set(key, pending)
   return pending
 }
 
 function appTitle(appId: AppId): string {
-  return appId === 'control-panel' ? 'Display' : appId === 'knowledge-desk' ? 'Knowledge Desk' : appId === 'find' ? 'Find' : appId === 'dsh-control' ? 'DSH Control Center' : appId === 'stationery' ? 'Stationery Pad' : appId[0]!.toUpperCase() + appId.slice(1)
+  return appId === 'control-panel' ? 'Display' : appId === 'knowledge-desk' ? 'Knowledge Desk' : appId === 'find' ? 'Find' : appId === 'dsh-control' ? 'DSH Control Center' : appId === 'stationery' ? 'Stationery Pad' : appId === 'agent-setup' ? 'New Agent' : appId[0]!.toUpperCase() + appId.slice(1)
 }
 
 interface InfoRecord { title: string; fields: Array<{ label: string; value: string }> }
@@ -140,17 +142,20 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
   const currentWorkspace = workspaces.items.find(item => String(item.workspaceId) === currentWorkspaceId)
   const importedWallpaper = wallpaperLibrary.items.find(item => item.id === wallpaperLibrary.selectedId) ?? null
   const wallpaperStyle = useMemo<CSSProperties>(() => {
+    const colored = preferences.uiAppearance === 'color'
+    const classicWallpaper = colored ? CLASSIC_COLOR_WALLPAPER : CLASSIC_WALLPAPER
+    const deskGray = colored ? '#9aada9' : '#aaa'
     const tileOrCover = (dataUrl: string, tileSize: number): CSSProperties => preferences.wallpaperFit === 'cover'
-      ? { backgroundColor: '#aaa', backgroundImage: `url(${dataUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'cover', imageRendering: 'pixelated' }
-      : { backgroundColor: '#aaa', backgroundImage: `url(${dataUrl})`, backgroundRepeat: 'repeat', backgroundPosition: '0 0', backgroundSize: `${tileSize}px auto`, imageRendering: 'pixelated' }
+      ? { backgroundColor: deskGray, backgroundImage: `url(${dataUrl})`, backgroundRepeat: 'no-repeat', backgroundPosition: 'center', backgroundSize: 'cover', imageRendering: 'pixelated' }
+      : { backgroundColor: deskGray, backgroundImage: `url(${dataUrl})`, backgroundRepeat: 'repeat', backgroundPosition: '0 0', backgroundSize: `${tileSize}px auto`, imageRendering: 'pixelated' }
     switch (preferences.wallpaper) {
-      case 'gray': return { backgroundColor: '#aaa', backgroundImage: 'none' }
-      case 'pinstripe': return { backgroundColor: '#bbb', backgroundImage: 'repeating-linear-gradient(135deg,#888 0 1px,#ddd 1px 3px)', backgroundSize: 'auto' }
-      case 'cat': return catWallpaper === null ? { backgroundColor: '#ccc', backgroundImage: 'none' } : tileOrCover(catWallpaper.dataUrl, catWallpaper.width)
-      case 'custom': return importedWallpaper === null ? { backgroundColor: '#bbb', backgroundImage: CLASSIC_WALLPAPER } : tileOrCover(importedWallpaper.dataUrl, importedWallpaper.width)
-      default: return { backgroundColor: '#bbb', backgroundImage: CLASSIC_WALLPAPER, backgroundRepeat: 'repeat', backgroundSize: '4px 4px' }
+      case 'gray': return { backgroundColor: deskGray, backgroundImage: 'none' }
+      case 'pinstripe': return colored ? { backgroundColor: '#a8bbb7', backgroundImage: 'repeating-linear-gradient(135deg,#6e8884 0 1px,#c0cfcb 1px 3px)', backgroundSize: 'auto' } : { backgroundColor: '#bbb', backgroundImage: 'repeating-linear-gradient(135deg,#888 0 1px,#ddd 1px 3px)', backgroundSize: 'auto' }
+      case 'cat': return catWallpaper === null ? { backgroundColor: colored ? '#a8bbb7' : '#ccc', backgroundImage: 'none' } : tileOrCover(catWallpaper.dataUrl, catWallpaper.width)
+      case 'custom': return importedWallpaper === null ? { backgroundColor: colored ? '#a6b9b5' : '#bbb', backgroundImage: classicWallpaper } : tileOrCover(importedWallpaper.dataUrl, importedWallpaper.width)
+      default: return { backgroundColor: colored ? '#a6b9b5' : '#bbb', backgroundImage: classicWallpaper, backgroundRepeat: 'repeat', backgroundSize: '4px 4px' }
     }
-  }, [catWallpaper, importedWallpaper, preferences.wallpaper, preferences.wallpaperFit])
+  }, [catWallpaper, importedWallpaper, preferences.uiAppearance, preferences.wallpaper, preferences.wallpaperFit])
 
   useEffect(() => {
     const listener = () => { setViewport({ width: window.innerWidth, height: window.innerHeight }) }
@@ -163,9 +168,9 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     if (preferences.wallpaper !== 'cat') return
     let cancelled = false
     setCatWallpaper(null)
-    void loadCatWallpaper(preferences.wallpaperFilterMode, preferences.wallpaperPixelSize).then(value => { if (!cancelled) setCatWallpaper(value) })
+    void loadCatWallpaper(preferences.wallpaperFilterMode, preferences.wallpaperPixelSize, preferences.uiAppearance).then(value => { if (!cancelled) setCatWallpaper(value) })
     return () => { cancelled = true }
-  }, [preferences.wallpaper, preferences.wallpaperFilterMode, preferences.wallpaperPixelSize])
+  }, [preferences.uiAppearance, preferences.wallpaper, preferences.wallpaperFilterMode, preferences.wallpaperPixelSize])
   useEffect(() => {
     if (preferences.wallpaper === 'custom' && importedWallpaper === null) setPreferences(current => ({ ...current, wallpaper: 'classic' }))
   }, [importedWallpaper, preferences.wallpaper])
@@ -231,22 +236,34 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     const summary = sessions.byId[sessionId as keyof typeof sessions.byId]
     adapter.openSession(sessionId); open('knowledge-desk', summary?.displayTitle ?? `Agent ${sessionId.slice(-8)}`, { sessionId })
   }, [adapter, desktop.windows, open, sessions.byId, workspaces.items])
-  const chooseFolder = useCallback(async () => {
+  const openAgentSetup = useCallback((workspaceId: string, existingSessionId?: string) => {
+    const ratio = preferences.baseFontSize / 10
+    const width = Math.round(376 * ratio)
+    const height = Math.round(258 * ratio)
+    const bounds = { x: Math.max(4, Math.round((desktopSize.width - width) / 2)), y: Math.max(metrics.menuBarHeight + 4, Math.round((desktopSize.height - height + metrics.menuBarHeight) / 2)), width, height }
+    open('agent-setup', 'New Agent', { workspaceId, ...(existingSessionId === undefined ? {} : { existingSessionId }) }, bounds, false)
+  }, [desktopSize.height, desktopSize.width, metrics.menuBarHeight, open, preferences.baseFontSize])
+  const chooseFolder = useCallback(async (configureAgent = true) => {
     const selected = await adapter.chooseWorkspace()
     if (selected !== null) {
       setCurrentWorkspaceId(String(selected.workspace.workspaceId))
-      focusOrOpenAgent(selected.sessionId)
+      if (configureAgent) openAgentSetup(String(selected.workspace.workspaceId), selected.sessionId)
+      else focusOrOpenAgent(selected.sessionId)
     }
-  }, [adapter, focusOrOpenAgent])
+  }, [adapter, focusOrOpenAgent, openAgentSetup])
   const openWorkspace = useCallback(async (workspaceId: string) => {
     setCurrentWorkspaceId(workspaceId)
     focusOrOpenAgent(await adapter.openWorkspace(workspaceId))
   }, [adapter, focusOrOpenAgent])
   const newAgent = useCallback(async (workspaceId?: string) => {
     const workspace = workspaces.items.find(item => String(item.workspaceId) === (workspaceId ?? currentWorkspaceId))
-    if (workspace === undefined) { await chooseFolder(); return }
-    await openWorkspace(String(workspace.workspaceId))
-  }, [chooseFolder, currentWorkspaceId, openWorkspace, workspaces.items])
+    if (workspace !== undefined) { openAgentSetup(String(workspace.workspaceId)); return }
+    const selected = await adapter.chooseWorkspace()
+    if (selected === null) return
+    const selectedWorkspaceId = String(selected.workspace.workspaceId)
+    setCurrentWorkspaceId(selectedWorkspaceId)
+    openAgentSetup(selectedWorkspaceId, selected.sessionId)
+  }, [adapter, currentWorkspaceId, openAgentSetup, workspaces.items])
   const openAgentBrowser = useCallback(() => {
     const existing = desktop.windows.find(window => window.appId === 'knowledge-desk' && valueOf(window.payload, 'sessionId') === undefined)
     if (existing !== undefined) dispatch({ type: 'focus', id: existing.id })
@@ -310,9 +327,11 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     if (existing !== undefined) dispatch({ type: 'focus', id: existing.id })
     else {
       const ratio = preferences.baseFontSize / 10
-      const clockWidth = Math.round(154 * ratio)
-      const clockHeight = Math.round(112 * ratio)
-      open(appId, appTitle(appId), undefined, appId === 'clock' ? { x: desktopSize.width - clockWidth - Math.round(21 * ratio), y: metrics.menuBarHeight + Math.round(20 * ratio), width: clockWidth, height: clockHeight } : undefined, appId !== 'clock')
+      const fixed = appId === 'clock' || appId === 'puzzle'
+      const width = Math.round((appId === 'clock' ? 154 : 226) * ratio)
+      const height = Math.round((appId === 'clock' ? 112 : 260) * ratio)
+      const bounds = fixed ? { x: desktopSize.width - width - Math.round(21 * ratio), y: metrics.menuBarHeight + Math.round((appId === 'clock' ? 20 : 40) * ratio), width, height } : undefined
+      open(appId, appTitle(appId), undefined, bounds, fixed ? false : true)
     }
   }, [desktop.windows, desktopSize.width, metrics.menuBarHeight, open, preferences.baseFontSize])
   const openTrash = useCallback(() => {
@@ -461,6 +480,19 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
     const anchor = toLogicalPoint(event.clientX, event.clientY, bounds?.left ?? frameLeft, bounds?.top ?? frameTop, preferences.pixelScale)
     setContextMenu({ anchor, items })
   }
+  const showTextContext = (event: React.MouseEvent<HTMLElement>, snapshot: EditableSnapshot) => {
+    const fail = (reason: unknown) => { setOperationError(errorMessage(reason)) }
+    showContextMenu(event, [
+      { kind: 'heading', label: 'Text' },
+      { label: 'Undo', disabled: snapshot.readOnly, action: () => { undoEditable(snapshot) } },
+      { kind: 'separator' },
+      { label: 'Cut', disabled: snapshot.readOnly || snapshot.selectedText === '', action: () => { void copyText(snapshot.selectedText).then(() => { replaceEditableSelection(snapshot, '', 'deleteByCut') }, fail) } },
+      { label: 'Copy', disabled: snapshot.selectedText === '', action: () => { void copyText(snapshot.selectedText).catch(fail) } },
+      { label: 'Paste', disabled: snapshot.readOnly, action: () => { if (navigator.clipboard?.readText === undefined) { fail(new Error('Clipboard paste is unavailable in this browser context.')); return } void navigator.clipboard.readText().then(text => { replaceEditableSelection(snapshot, text, 'insertFromPaste') }, fail) } },
+      { kind: 'separator' },
+      { label: 'Select All', action: () => { selectAllEditable(snapshot) } },
+    ])
+  }
   const copyPath = (path: string) => { void copyText(path).catch(reason => { setOperationError(errorMessage(reason)) }) }
   const showAgentContext = (event: React.MouseEvent<HTMLElement>, session: { id: string; title: string; running: boolean; completed?: boolean; cwd?: string; updatedAt: number; workspaceId?: string; workspaceTitle?: string }) => {
     showContextMenu(event, [
@@ -555,13 +587,15 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
       case 'find': return <FindApp adapter={adapter} workspaces={findTargets} sessionIds={[...new Set([...allSessionRows.map(row => row.id), ...archivedAgents.map(row => row.sessionId)])]} agentTitles={Object.fromEntries([...allSessionRows.map(row => [row.id, row.title]), ...archivedAgents.map(row => [row.sessionId, row.title])])} {...(sessions.current === undefined ? {} : { currentSessionId: String(sessions.current) })} onOpenFile={openFile} onOpenFolder={(id, folder) => { openFinder(id, folder) }} onOpenAgent={focusOrOpenAgent} onOpenTimeline={openTimeline} />
       case 'trash': return <TrashApp records={trash} onRestore={restoreFromTrash} onEmpty={() => { setTrash([]) }} />
       case 'dsh-control': return <DshControlApp adapter={adapter} agents={sessionRows.map(row => ({ id: row.id, title: row.title, ...(row.cwd === undefined ? {} : { cwd: row.cwd }), ...(row.workspaceId === undefined ? {} : { workspaceId: row.workspaceId }) }))} initialSessionId={valueOf(window.payload, 'sessionId') ?? (sessions.current === undefined ? undefined : String(sessions.current))} onOpenAgent={focusOrOpenAgent} />
-      case 'stationery': return <StationeryPadApp adapter={adapter} workspaces={workspaceRows.map(row => ({ id: row.id, title: row.title, path: row.path }))} currentWorkspaceId={currentWorkspaceId} onChooseFolder={chooseFolder} onCreated={focusOrOpenAgent} />
+      case 'stationery': return <StationeryPadApp adapter={adapter} workspaces={workspaceRows.map(row => ({ id: row.id, title: row.title, path: row.path }))} currentWorkspaceId={currentWorkspaceId} onChooseFolder={() => chooseFolder(false)} onCreated={focusOrOpenAgent} />
+      case 'agent-setup': { const setupWorkspaceId = valueOf(window.payload, 'workspaceId') ?? currentWorkspaceId; const existingSessionId = valueOf(window.payload, 'existingSessionId'); return <AgentSetupApp adapter={adapter} workspaces={workspaceRows.map(row => ({ id: row.id, title: row.title, path: row.path, ...(row.sessionIds[0] === undefined ? {} : { modelSessionId: row.sessionIds[0] }) }))} currentWorkspaceId={setupWorkspaceId} {...(existingSessionId === undefined ? {} : { existingSessionId })} onCancel={() => { dispatch({ type: 'close', id: window.id }) }} onCreated={sessionId => { dispatch({ type: 'close', id: window.id }); focusOrOpenAgent(sessionId) }} /> }
     }
   }
 
   return <div className="knowledge-desk-host">
     <AppStylesBridge /><AccessoriesStylesBridge />
     <div className="kd-stage"><div className="kd-frame-stack" style={{ width: visualWidth, height: visualHeight, left: frameLeft, top: frameTop }}><main ref={desktopRef} className="kd-desktop" tabIndex={-1}
+      onContextMenuCapture={event => { event.preventDefault() }}
       onPointerDown={event => {
         if (event.target !== event.currentTarget || event.button !== 0) return
         const startX = Math.round((event.clientX - frameLeft) / preferences.pixelScale)
@@ -582,19 +616,23 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
       }}
       onPointerUp={event => { if (marquee?.pointerId === event.pointerId) { setMarquee(null); event.currentTarget.releasePointerCapture(event.pointerId) } }}
       onKeyDown={event => { const target = event.target as HTMLElement; if ((event.key === 'Delete' || event.key === 'Backspace') && selectedShortcutIds.length > 0 && !target.matches('input,textarea,[contenteditable="true"]')) { event.preventDefault(); moveToTrash(selectedShortcutIds) } }}
-      onContextMenu={event => { if (event.target !== event.currentTarget) return; showContextMenu(event, [
-        { kind: 'heading', label: 'Desktop' },
-        { label: 'New Agent', action: () => { void newAgent().catch(reason => { setOperationError(errorMessage(reason)) }) } },
-        { label: 'New from Stationery…', action: openStationery },
-        { kind: 'separator' },
-        { label: 'Open Finder', action: () => { openFinder() } },
-        { label: 'New Terminal', action: () => { void openTerminalForCurrent() } },
-        { label: 'Find…', action: () => { open('find', 'Find') } },
-        { kind: 'separator' },
-        { label: 'Clean Up Desktop', disabled: shortcuts.length === 0, action: cleanUpDesktop },
-        { label: 'Desktop Info', action: () => { setInfo({ title: 'Desktop Info', fields: [{ label: 'Resolution', value: `${desktopSize.width} × ${desktopSize.height}` }, { label: 'Scale', value: `${preferences.pixelScale}×` }, { label: 'Base font', value: `${preferences.baseFontSize}px` }, { label: 'Aliases', value: String(shortcuts.length) }, { label: 'Open windows', value: String(desktop.windows.length) }] }) } },
-      ]) }}
-      onDragOver={event => { if (event.dataTransfer.types.includes('application/x-s7r-desktop-item')) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }} onDrop={dropOnDesktop} style={{ width: desktopSize.width, height: desktopSize.height, zoom: preferences.pixelScale, ...wallpaperStyle }} data-resolution={preferences.resolution} data-base-font={preferences.baseFontSize} data-pixel-scale={preferences.pixelScale}>
+      onContextMenu={event => {
+        if (event.target === event.currentTarget) { showContextMenu(event, [
+          { kind: 'heading', label: 'Desktop' },
+          { label: 'New Agent', action: () => { void newAgent().catch(reason => { setOperationError(errorMessage(reason)) }) } },
+          { label: 'New from Stationery…', action: openStationery },
+          { kind: 'separator' },
+          { label: 'Open Finder', action: () => { openFinder() } },
+          { label: 'New Terminal', action: () => { void openTerminalForCurrent() } },
+          { label: 'Find…', action: () => { open('find', 'Find') } },
+          { kind: 'separator' },
+          { label: 'Clean Up Desktop', disabled: shortcuts.length === 0, action: cleanUpDesktop },
+          { label: 'Desktop Info', action: () => { setInfo({ title: 'Desktop Info', fields: [{ label: 'Resolution', value: `${desktopSize.width} × ${desktopSize.height}` }, { label: 'Scale', value: `${preferences.pixelScale}×` }, { label: 'Base font', value: `${preferences.baseFontSize}px` }, { label: 'Aliases', value: String(shortcuts.length) }, { label: 'Open windows', value: String(desktop.windows.length) }] }) } },
+        ]); return }
+        const snapshot = captureEditableSnapshot(event.target)
+        if (snapshot !== null) showTextContext(event, snapshot)
+      }}
+      onDragOver={event => { if (event.dataTransfer.types.includes('application/x-s7r-desktop-item')) { event.preventDefault(); event.dataTransfer.dropEffect = 'move' } }} onDrop={dropOnDesktop} style={{ width: desktopSize.width, height: desktopSize.height, zoom: preferences.pixelScale, ...wallpaperStyle }} data-resolution={preferences.resolution} data-base-font={preferences.baseFontSize} data-pixel-scale={preferences.pixelScale} data-ui-appearance={preferences.uiAppearance}>
       <MenuBar active={active} windows={desktop.windows} clock={now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} agents={sessionRows.map(row => ({ id: row.id, title: row.title, status: row.running ? 'running' : row.completed ? 'completed' : 'idle', updatedAt: row.updatedAt }))} agentMenuLimit={agentMenuLimit}
         onAccessory={openAccessory} onSettings={() => { open('settings', 'Settings') }} onDshControl={() => { openDshControl(valueOf(active?.payload, 'sessionId')) }} onStationery={openStationery} onNewAgent={() => { void newAgent().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onChooseFolder={() => { void chooseFolder().catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onOpenAgents={openAgentBrowser} onOpenFinder={() => { openFinder() }} onOpenTerminal={() => { void openTerminalForCurrent() }} onFind={() => { open('find', 'Find') }} onClose={() => { if (active !== undefined) requestClose(active.id) }} onSave={() => { window.dispatchEvent(new Event('knowledge-desk:save-active')) }}
         onZoom={() => { if (active !== undefined) dispatch({ type: 'zoom', id: active.id, workArea }) }} onCollapse={() => { if (active !== undefined) dispatch({ type: 'collapse', id: active.id }) }} onTile={() => { dispatch({ type: 'tile', workArea }) }} onRestoreLayout={() => { dispatch({ type: 'restore-layout', workArea }) }} hasRestorableLayout={desktop.layoutRestore !== undefined} trashCount={trash.length} onOpenTrash={openTrash} onEmptyTrash={() => { setConfirmEmptyTrash(true) }} onCleanUpDesktop={cleanUpDesktop} onFocusWindow={id => { dispatch({ type: 'focus', id }) }} onTimeline={() => { const id = valueOf(active?.payload, 'sessionId'); if (id !== undefined) openTimeline(id) }} onFocusAgent={focusOrOpenAgent} onStopAgent={id => { void adapter.cancel(id).catch(reason => { setOperationError(reason instanceof Error ? reason.message : String(reason)) }) }} onHelp={() => { setHelp(true) }} balloonHelp={balloonHelp} onBalloonHelpChange={setBalloonHelp} onAbout={() => { setAbout(true) }} />
@@ -614,7 +652,7 @@ export function DesktopRoot({ adapter, useSessions, useWorkspaces }: DesktopRoot
       {pendingClose === null ? null : <SystemDialog title="Unsaved Changes" onClose={() => { setPendingClose(null) }}><p>This document has changes that have not been saved.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setPendingClose(null) }}>Cancel</SystemButton><SystemButton onClick={() => { const id = pendingClose; setPendingClose(null); dirty.current.delete(id); dispatch({ type: 'close', id }) }}>Discard Changes</SystemButton></div></SystemDialog>}
       {pendingFolderShortcut === null ? null : <SystemDialog title="Folder Shortcut" onClose={() => { setPendingFolderShortcut(null) }}><p>How should “{pendingFolderShortcut.item.label}” behave on the desktop?</p><p className="kd-muted"><strong>Finder Alias</strong> opens this directory inside its existing Workspace. <strong>Workspace Alias</strong> registers this directory as a Workspace and connects an Agent.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setPendingFolderShortcut(null) }}>Cancel</SystemButton><SystemButton onClick={() => { const pending = pendingFolderShortcut; putDesktopItem({ ...pending.item, folderAction: 'browse' }, pending); setPendingFolderShortcut(null) }}>Finder Alias</SystemButton><SystemButton onClick={() => { const pending = pendingFolderShortcut; putDesktopItem({ ...pending.item, folderAction: 'workspace' }, pending); setPendingFolderShortcut(null) }}>Workspace Alias</SystemButton></div></SystemDialog>}
       {confirmEmptyTrash ? <SystemDialog title="Empty Trash" onClose={() => { setConfirmEmptyTrash(false) }}><p>Permanently remove {trash.length} S7R desktop {trash.length === 1 ? 'alias' : 'aliases'} from Trash?</p><p className="kd-muted">No real file, folder, Workspace, Agent history, or Scrapbook card will be deleted.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setConfirmEmptyTrash(false) }}>Cancel</SystemButton><SystemButton onClick={() => { setTrash([]); setConfirmEmptyTrash(false) }}>Empty Trash</SystemButton></div></SystemDialog> : null}
-      {help ? <SystemDialog title="S7R Guide" onClose={() => { setHelp(false) }}><div className="kd-help-guide"><p>S7R puts DSH inside a compact System 7-style desktop.</p><ol><li>Start with <strong>File → Choose Folder…</strong>. Knowledge Desk then reopens Workspaces and Agents; its Archived tab restores S7R-archived conversations.</li><li>Use <strong>File → New from Stationery…</strong> to create an Agent from a real DSH Agent Preset. Use <strong>S7R → DSH Control Center…</strong> for models, reasoning, Presets, commands/modes, Skills, and authoritative plugin status.</li><li>Right-click desktop aliases, Finder items, Workspaces, or Agents for Open, path copy, desktop placement, Get Info, rename/export/archive, and alias deletion. S7R never deletes a real project file from these menus.</li><li>Use <strong>File → Find…</strong> to search file names, source contents, Agent messages, or every event stream.</li><li>Drag Workspaces, Agents, Finder items, or one Scrapbook card onto the desktop. Drag empty desktop space to marquee-select several aliases, then drag one selected alias to move the group.</li><li>Delete selected aliases or drag them to the bottom-right <strong>Trash</strong>. Open Trash to Put Away items; use <strong>Special → Empty Trash…</strong> for permanent removal of aliases. Real project files are never deleted.</li><li>Drop a path into an Agent: paths inside its project become relative; paths outside stay absolute. Use <strong>Context</strong> for context management and <strong>Other…</strong> for DSH controls, rename, export, archive, desktop placement, and Markdown rendering.</li><li>Turn on <strong>Help → Show Balloon Help</strong>, then pause over marked controls. Balloons are positioned in logical desktop coordinates, so both 1× and 2× use the same sharp, bounded layout.</li><li>Double-click Finder items to open them. Save TextEdit documents with <strong>File → Save</strong>; <strong>File → New Terminal</strong> starts zsh. Monitor’s Background tab shows DSH jobs.</li><li>Use <strong>S7R → Settings…</strong> for the DeepSeek API key and <strong>Display Control Panel</strong> for scale, filters, and wallpaper.</li></ol><p className="kd-muted">Window positions, desktop items, Trash, Balloon Help, and the Markdown preference return after reload. Live Terminal windows intentionally do not, because their PTYs cannot be safely reattached. Plugin inventory is read-only in DSH rc.7, so S7R does not fake enable switches.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setHelp(false) }}>OK</SystemButton></div></div></SystemDialog> : null}
+      {help ? <SystemDialog title="S7R Guide" onClose={() => { setHelp(false) }}><div className="kd-help-guide"><p>S7R puts DSH inside a compact System 7-style desktop.</p><ol><li>Start with <strong>File → Choose Folder…</strong>. Before the first Agent opens, the fixed New Agent window lets you choose its DSH Agent Preset, model, and reasoning level.</li><li>Use <strong>File → New Agent</strong> for the same guided setup in the current Workspace, or <strong>New from Stationery…</strong> for a reusable Preset plus an optional name and opening prompt. Use <strong>S7R → DSH Control Center…</strong> for later DSH inspection.</li><li>Right-click desktop aliases, Finder items, Workspaces, or Agents for Open, path copy, desktop placement, Get Info, rename/export/archive, and alias deletion. Editable text has S7R Cut, Copy, Paste, Undo, and Select All; other areas suppress the browser menu.</li><li>Use <strong>File → Find…</strong> to search file names, source contents, Agent messages, or every event stream.</li><li>Drag Workspaces, Agents, Finder items, or one Scrapbook card onto the desktop. Drag empty desktop space to marquee-select several aliases, then drag one selected alias to move the group.</li><li>Delete selected aliases or drag them to the bottom-right <strong>Trash</strong>. Open Trash to Put Away items; use <strong>Special → Empty Trash…</strong> for permanent removal of aliases. Real project files are never deleted.</li><li>Drop a path into an Agent: paths inside its project become relative; paths outside stay absolute. Use <strong>Context</strong> for context management and <strong>Other…</strong> for DSH controls, rename, export, archive, desktop placement, and Markdown rendering.</li><li>Turn on <strong>Help → Show Balloon Help</strong>, then pause over marked controls. Balloons are positioned in logical desktop coordinates, so both 1× and 2× use the same sharp, bounded layout.</li><li>Double-click Finder items to open them. Save TextEdit documents with <strong>File → Save</strong>; <strong>File → New Terminal</strong> starts zsh. Monitor’s Background tab shows DSH jobs.</li><li>Use <strong>S7R → Settings…</strong> for the DeepSeek API key and <strong>Display Control Panel</strong> for scale, monochrome or muted-color UI, filters, and wallpaper.</li></ol><p className="kd-muted">Window positions, desktop items, Trash, Balloon Help, and the Markdown preference return after reload. Live Terminal and incomplete New Agent windows intentionally do not. Plugin inventory is read-only in DSH rc.7, so S7R does not fake enable switches.</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setHelp(false) }}>OK</SystemButton></div></div></SystemDialog> : null}
       {about ? <SystemDialog title="About S7R" onClose={() => { setAbout(false) }}><div className="kd-about"><div className="kd-welcome-mark">S7R</div><h2>S7R</h2><p>System 7 Reimagined — a workstation shell for DeepSeek Harness.</p><p className="kd-small">Original implementation. No Apple assets are included.</p><SystemButton onClick={() => { setAbout(false) }}>OK</SystemButton></div></SystemDialog> : null}
       {operationError === null ? null : <SystemDialog title="S7R" onClose={() => { setOperationError(null) }}><p>{operationError}</p><div className="kd-dialog-actions"><SystemButton onClick={() => { setOperationError(null) }}>OK</SystemButton></div></SystemDialog>}
     </main></div></div>

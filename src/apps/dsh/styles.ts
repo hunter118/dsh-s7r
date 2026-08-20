@@ -1,5 +1,8 @@
 export const DSH_APP_STYLES = String.raw`
-.kd-stationery,.kd-native-control { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.kd-stationery,.kd-native-control,.kd-agent-setup { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.kd-agent-setup .s7-panel { flex: 1 1 auto; min-height: 0; margin-bottom: 0; overflow: auto; }
+.kd-agent-setup .kd-form-grid { grid-template-columns: calc(var(--s7-font-size) * 8.5) minmax(0,1fr); }
+.kd-agent-setup-note { margin: var(--s7-gap) 0 0; max-height: calc(var(--s7-line-height) * 3); overflow: auto; }
 .kd-stationery-banner { display: flex; align-items: center; gap: calc(var(--s7-gap) * 3); padding: calc(var(--s7-pad) * 2); border-bottom: 1px solid var(--s7-dark); background: var(--s7-light); }
 .kd-stationery-banner h2,.kd-stationery-banner p { margin: 0; }
 .kd-stationery-sheet { width: calc(var(--s7-font-size) * 4); height: calc(var(--s7-font-size) * 5); display: grid; place-items: center; border: 1px solid var(--s7-ink); background: var(--s7-white); box-shadow: 3px 3px 0 var(--s7-mid); font-family: var(--s7-mono); }
@@ -28,4 +31,6 @@ export const DSH_APP_STYLES = String.raw`
 .kd-native-phase-loading,.kd-native-phase-pending { background: repeating-linear-gradient(135deg,var(--s7-ink) 0 1px,var(--s7-white) 1px 3px); }
 .kd-native-phase-failed { background: var(--s7-ink); position: relative; }
 .kd-native-phase-failed::after { content: 'x'; color: var(--s7-white); position: absolute; inset: -2px 0 0; text-align: center; font-family: var(--s7-mono); }
+.kd-desktop[data-ui-appearance="color"] .kd-native-phase-active { background: var(--s7-success); }
+.kd-desktop[data-ui-appearance="color"] .kd-native-phase-failed { background: var(--s7-danger); }
 `

@@ -34,7 +34,7 @@ export const DEFAULT_AGENT_MENU_LIMIT: AgentMenuLimit = 5
 
 export const DESKTOP_STORAGE_KEY = 's7r.desktop.v1'
 
-const APP_IDS: readonly AppId[] = ['knowledge-desk', 'finder', 'textedit', 'preview', 'terminal', 'timeline', 'scrapbook', 'clock', 'puzzle', 'monitor', 'settings', 'control-panel', 'find', 'trash', 'dsh-control', 'stationery']
+const APP_IDS: readonly AppId[] = ['knowledge-desk', 'finder', 'textedit', 'preview', 'terminal', 'timeline', 'scrapbook', 'clock', 'puzzle', 'monitor', 'settings', 'control-panel', 'find', 'trash', 'dsh-control', 'stationery', 'agent-setup']
 
 function finite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
@@ -90,6 +90,10 @@ function validTrashed(value: unknown): value is TrashedShortcutRecord {
   return validShortcut(item.shortcut) && finite(item.trashedAt)
 }
 
+function fixedSizeApp(appId: AppId): boolean {
+  return appId === 'clock' || appId === 'puzzle'
+}
+
 export const EMPTY_DESKTOP_PERSISTENCE: DesktopPersistence = Object.freeze({
   version: 2,
   desktop: { windows: [], nextId: 1, nextZ: 1 },
@@ -118,10 +122,13 @@ export function readDesktopPersistence(storage: Pick<Storage, 'getItem'> | undef
       ? value.agentMenuLimit as AgentMenuLimit
       : DEFAULT_AGENT_MENU_LIMIT
     const balloonHelp = value.version === 2 && typeof value.balloonHelp === 'boolean' ? value.balloonHelp : false
-    const windows = state.windows.filter(window => window.appId !== 'terminal')
+    const windows = state.windows.filter(window => window.appId !== 'terminal' && window.appId !== 'agent-setup').map(window => fixedSizeApp(window.appId)
+      ? { ...window, bounds: window.state === 'zoomed' ? window.restoreBounds ?? window.bounds : window.bounds, restoreBounds: undefined, state: window.state === 'collapsed' ? 'collapsed' as const : 'normal' as const, resizable: false }
+      : window)
     const activeId = windows.some(window => window.id === state.activeId) ? state.activeId : undefined
     const liveIds = new Set(windows.map(window => window.id))
-    const layoutRestore = state.layoutRestore?.filter(entry => liveIds.has(entry.id))
+    const fixedIds = new Set(windows.filter(window => fixedSizeApp(window.appId)).map(window => window.id))
+    const layoutRestore = state.layoutRestore?.filter(entry => liveIds.has(entry.id)).map(entry => fixedIds.has(entry.id) ? { ...entry, state: 'normal' as const, restoreBounds: undefined } : entry)
     return { version: 2, desktop: { windows, nextId: state.nextId, nextZ: state.nextZ, ...(activeId === undefined ? {} : { activeId }), ...(layoutRestore === undefined || layoutRestore.length === 0 ? {} : { layoutRestore }) }, shortcuts: value.shortcuts, archivedAgents: value.archivedAgents, trash, renderMarkdown, agentMenuLimit, balloonHelp }
   } catch {
     return EMPTY_DESKTOP_PERSISTENCE
@@ -130,7 +137,7 @@ export function readDesktopPersistence(storage: Pick<Storage, 'getItem'> | undef
 
 export function writeDesktopPersistence(storage: Pick<Storage, 'setItem'> | undefined, value: DesktopPersistence): void {
   try {
-    const windows = value.desktop.windows.filter(window => window.appId !== 'terminal')
+    const windows = value.desktop.windows.filter(window => window.appId !== 'terminal' && window.appId !== 'agent-setup')
     const activeId = windows.some(window => window.id === value.desktop.activeId) ? value.desktop.activeId : undefined
     storage?.setItem(DESKTOP_STORAGE_KEY, JSON.stringify({ ...value, desktop: { ...value.desktop, windows, ...(activeId === undefined ? { activeId: undefined } : { activeId }) } }))
   } catch {

@@ -2,6 +2,21 @@
 
 All notable user-facing changes to S7R are documented here. The project follows semantic versioning while its DSH dependency remains in release-candidate status.
 
+## Unreleased
+
+### Added
+
+- A fixed New Agent setup window selects the DSH Agent Preset, provider model, and reasoning level before opening the conversation.
+- Display Control Panel can switch between the default monochrome System UI and restrained period-style color accents.
+- Muted Color gives every built-in wallpaper a coordinated low-saturation blue-green palette, including a pixel-preserving tinted Cat tile.
+- Editable fields now use S7R-owned Undo/Cut/Copy/Paste/Select All contextual menus while native browser context menus are suppressed throughout the desktop.
+
+### Changed
+
+- Balloon Help is gray in monochrome mode and softly tinted only in color mode.
+- Clock and Puzzle are fixed-size desk accessory windows and remain fixed when other windows are tiled.
+- The redundant View menu was removed; Clock and Puzzle now occupy a separated accessory group at the bottom of the S7R menu.
+
 ## 0.9.2 - 2026-08-20
 
 ### Changed

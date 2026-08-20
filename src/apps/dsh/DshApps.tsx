@@ -78,6 +78,86 @@ export function StationeryPadApp({ adapter, workspaces, currentWorkspaceId, onCh
   </div>
 }
 
+export function AgentSetupApp({ adapter, workspaces, currentWorkspaceId, existingSessionId, onCreated, onCancel }: {
+  adapter: DshClientAdapter
+  workspaces: readonly (NativeWorkspaceRow & { modelSessionId?: string })[]
+  currentWorkspaceId?: string | undefined
+  existingSessionId?: string | undefined
+  onCreated: (sessionId: string) => void
+  onCancel: () => void
+}) {
+  const [presets, setPresets] = useState<AgentPresetView[]>([])
+  const [preset, setPreset] = useState('')
+  const [workspaceId, setWorkspaceId] = useState(currentWorkspaceId ?? workspaces[0]?.id ?? '')
+  const [models, setModels] = useState<SessionModels | null>(null)
+  const [selection, setSelection] = useState<ModelSelection | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [createdSessionId, setCreatedSessionId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [modelNotice, setModelNotice] = useState<string | null>(null)
+  const modelSourceSessionId = existingSessionId ?? workspaces.find(item => item.id === workspaceId)?.modelSessionId
+  const modelOptions = useMemo(() => models?.groups.flatMap(group => group.models.map(model => ({ provider: group.id, providerName: group.name, model }))) ?? [], [models])
+  const exactModel = selection === null ? undefined : modelOptions.find(item => item.provider === selection.provider && item.model.id === selection.model)
+  useEffect(() => {
+    let cancelled = false
+    void adapter.listAgentPresets().then(value => {
+      if (cancelled) return
+      const usable = value.filter(item => item.broken === undefined)
+      setPresets(value)
+      setPreset(current => current || usable.find(item => item.isDefault)?.id || usable[0]?.id || '')
+    }, reason => { if (!cancelled) setError(errorMessage(reason)) })
+    return () => { cancelled = true }
+  }, [adapter])
+  useEffect(() => {
+    let cancelled = false
+    setModels(null); setSelection(null); setModelNotice(null)
+    if (modelSourceSessionId === undefined) { setModelNotice('No prior Agent is available for the model catalog. DSH will use the Preset default.'); return () => { cancelled = true } }
+    void adapter.prepareSession(modelSourceSessionId).then(() => adapter.sessionModels(modelSourceSessionId)).then(value => {
+      if (cancelled) return
+      setModels(value); setSelection(value.current)
+      if (value.failures.length > 0) setModelNotice(value.failures.map(item => `${item.name}: ${item.message}`).join(' · '))
+    }, reason => { if (!cancelled) setModelNotice(`Model catalog unavailable; the Preset default remains usable. ${errorMessage(reason)}`) })
+    return () => { cancelled = true }
+  }, [adapter, modelSourceSessionId])
+  const selectModel = (value: string) => {
+    const [provider, model] = value.split('\t')
+    if (provider === undefined || model === undefined) return
+    const exact = modelOptions.find(item => item.provider === provider && item.model.id === model)
+    const effort = exact?.model.reasoning?.defaultEffort
+    setSelection({ provider, model, ...(effort === undefined ? {} : { reasoningEffort: effort }) })
+  }
+  const create = async () => {
+    if (busy || preset === '' || workspaceId === '') return
+    setBusy(true); setError(null)
+    try {
+      let sessionId = existingSessionId ?? createdSessionId ?? undefined
+      if (sessionId === undefined) {
+        sessionId = (await adapter.newSessionFromPreset({ workspaceId, agentPreset: preset })).sessionId
+        setCreatedSessionId(sessionId)
+      } else {
+        await adapter.prepareSession(sessionId)
+        await adapter.selectAgentPreset(sessionId, preset)
+      }
+      if (selection !== null) await adapter.selectModel(sessionId, selection)
+      onCreated(sessionId)
+    } catch (reason) { setError(errorMessage(reason)) } finally { setBusy(false) }
+  }
+  return <div className="kd-agent-setup">
+    {error === null ? null : <div className="s7-inline-error">{error}</div>}
+    <SystemPanel title="New Agent">
+      <div className="kd-form-grid">
+        <label htmlFor="kd-agent-setup-workspace">Workspace</label><SystemSelect id="kd-agent-setup-workspace" disabled={existingSessionId !== undefined || busy} value={workspaceId} onChange={event => { setWorkspaceId(event.currentTarget.value) }}>{workspaces.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</SystemSelect>
+        <label htmlFor="kd-agent-setup-preset">Agent Preset</label><SystemSelect id="kd-agent-setup-preset" disabled={busy} value={preset} onChange={event => { setPreset(event.currentTarget.value) }}><option value="">No usable Preset</option>{presets.map(item => <option key={item.id} value={item.id} disabled={item.broken !== undefined}>{presetLabel(item)}{item.broken === undefined ? '' : ' — Broken'}</option>)}</SystemSelect>
+        <label htmlFor="kd-agent-setup-model">Model</label><SystemSelect id="kd-agent-setup-model" disabled={selection === null || busy} value={selection === null ? '' : `${selection.provider}\t${selection.model}`} onChange={event => { selectModel(event.currentTarget.value) }}><option value="">Preset default</option>{modelOptions.map(item => <option key={`${item.provider}:${item.model.id}`} value={`${item.provider}\t${item.model.id}`}>{item.providerName} / {item.model.name}</option>)}</SystemSelect>
+        <label htmlFor="kd-agent-setup-reasoning">Reasoning</label><SystemSelect id="kd-agent-setup-reasoning" disabled={selection === null || busy || exactModel?.model.reasoning === undefined} value={selection?.reasoningEffort ?? ''} onChange={event => { setSelection(current => current === null ? null : { provider: current.provider, model: current.model, ...(event.currentTarget.value === '' ? {} : { reasoningEffort: event.currentTarget.value }) }) }}><option value="">Provider default</option>{exactModel?.model.reasoning?.efforts.map(effort => <option key={effort.id} value={effort.id}>{effort.name}</option>)}</SystemSelect>
+      </div>
+      {modelNotice === null ? null : <p className="kd-muted kd-agent-setup-note">{modelNotice}</p>}
+      <div className="kd-dialog-actions"><SystemButton disabled={busy} onClick={createdSessionId === null ? onCancel : () => { onCreated(createdSessionId) }}>{createdSessionId === null ? 'Cancel' : 'Open Preset Default'}</SystemButton><SystemButton disabled={busy || preset === '' || workspaceId === ''} onClick={() => { void create() }}>{busy ? 'Creating…' : createdSessionId === null ? 'Create Agent' : 'Apply & Open'}</SystemButton></div>
+    </SystemPanel>
+    <SystemStatusBar>{existingSessionId === undefined ? 'A new DSH Agent will be created' : 'Configuring the new Workspace Agent'} · {models === null ? 'Preset model route' : `${modelOptions.length} models`}</SystemStatusBar>
+  </div>
+}
+
 type ControlTab = 'agent' | 'commands' | 'skills' | 'plugins'
 
 export function DshControlApp({ adapter, agents, initialSessionId, onOpenAgent }: {

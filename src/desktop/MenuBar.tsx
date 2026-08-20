@@ -82,10 +82,11 @@ export function MenuBar(props: MenuBarProps) {
     { label: 'Settings…', action: props.onSettings },
     { label: 'DSH Control Center…', action: props.onDshControl },
     { label: 'Scrapbook', action: () => { props.onAccessory('scrapbook') } },
-    { label: 'Clock', action: () => { props.onAccessory('clock') } },
-    { label: 'Puzzle', action: () => { props.onAccessory('puzzle') } },
     { label: 'Monitor', action: () => { props.onAccessory('monitor') } },
     { label: 'Display Control Panel…', action: () => { props.onAccessory('control-panel') } },
+    { separator: true },
+    { label: 'Clock', action: () => { props.onAccessory('clock') } },
+    { label: 'Puzzle', action: () => { props.onAccessory('puzzle') } },
   ]
   const file: MenuItem[] = [
     { label: 'New Agent', action: props.onNewAgent },
@@ -105,13 +106,9 @@ export function MenuBar(props: MenuBarProps) {
     { label: 'Cut', disabled: !editable, action: () => { edit('cut') } }, { label: 'Copy', disabled: active === undefined, action: () => { edit('copy') } },
     { label: 'Paste', disabled: !editable, action: () => { edit('paste') } }, { label: 'Select All', disabled: active === undefined, action: () => { edit('selectAll') } },
   ]
-  const refreshable = active !== undefined && ['finder', 'preview', 'timeline', 'monitor', 'find', 'trash'].includes(active.appId)
-  const view: MenuItem[] = active === undefined
-    ? [{ label: 'No Active View', disabled: true }]
-    : [{ heading: true, label: active.title }, ...(refreshable ? [{ label: 'Refresh', action: () => { window.dispatchEvent(new Event('knowledge-desk:refresh-active')) } }] : []), ...(active.appId === 'knowledge-desk' && activeSessionId !== undefined ? [{ label: 'Open Timeline', action: props.onTimeline }] : []), ...(!refreshable && !(active.appId === 'knowledge-desk' && activeSessionId !== undefined) ? [{ label: 'No View Commands', disabled: true }] : [])]
   const agents = recentMenuAgents(props.agents, props.agentMenuLimit)
   const windowItems: MenuItem[] = [
-    { label: 'Zoom', disabled: active === undefined, action: props.onZoom },
+    { label: 'Zoom', disabled: active === undefined || active.resizable === false || active.appId === 'clock' || active.appId === 'puzzle' || active.appId === 'agent-setup', action: props.onZoom },
     { label: 'Collapse', disabled: active === undefined, action: props.onCollapse },
     { label: 'Tile Windows', disabled: props.windows.length === 0, action: props.onTile },
     { label: 'Restore Previous Layout', disabled: !props.hasRestorableLayout, action: props.onRestoreLayout },
@@ -130,7 +127,7 @@ export function MenuBar(props: MenuBarProps) {
     { label: 'S7R Guide…', action: props.onHelp },
   ]
   return <nav className="kd-menu-bar" aria-label="Global menu bar" onPointerDown={event => { event.stopPropagation() }}>
-    <Menu id="desk" label="S7R" items={desk} open={open} setOpen={setOpen} /><Menu id="file" label="File" items={file} open={open} setOpen={setOpen} /><Menu id="edit" label="Edit" items={editItems} open={open} setOpen={setOpen} /><Menu id="view" label="View" items={view} open={open} setOpen={setOpen} /><Menu id="window" label="Window" items={windowItems} open={open} setOpen={setOpen} /><Menu id="special" label="Special" items={special} open={open} setOpen={setOpen} /><Menu id="help" label="Help" items={helpItems} open={open} setOpen={setOpen} /><span className="kd-menu-clock">{props.clock}</span>
+    <Menu id="desk" label="S7R" items={desk} open={open} setOpen={setOpen} /><Menu id="file" label="File" items={file} open={open} setOpen={setOpen} /><Menu id="edit" label="Edit" items={editItems} open={open} setOpen={setOpen} /><Menu id="window" label="Window" items={windowItems} open={open} setOpen={setOpen} /><Menu id="special" label="Special" items={special} open={open} setOpen={setOpen} /><Menu id="help" label="Help" items={helpItems} open={open} setOpen={setOpen} /><span className="kd-menu-clock">{props.clock}</span>
   </nav>
 }
 

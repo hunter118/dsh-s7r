@@ -30,6 +30,10 @@ export const ACCESSORY_STYLES = String.raw`
 .kd-wallpaper-gray { background: #aaa; }
 .kd-wallpaper-pinstripe { background: repeating-linear-gradient(135deg,#888 0 1px,#ddd 1px 3px); }
 .kd-wallpaper-cats { background: #ddd; }
+.kd-desktop[data-ui-appearance="color"] .kd-wallpaper-classic { background-color: #a6b9b5; background-image: radial-gradient(#607b77 1px,transparent 1px); }
+.kd-desktop[data-ui-appearance="color"] .kd-wallpaper-gray { background: #9aada9; }
+.kd-desktop[data-ui-appearance="color"] .kd-wallpaper-pinstripe { background: repeating-linear-gradient(135deg,#6e8884 0 1px,#c0cfcb 1px 3px); }
+.kd-desktop[data-ui-appearance="color"] .kd-wallpaper-cats { background: #a8bbb7; color: #304f4c; }
 .kd-wallpaper-custom { background: repeating-linear-gradient(45deg,#eee 0 3px,#888 3px 4px); }
 .kd-hidden-file { position: fixed; left: -10000px; width: 1px; height: 1px; opacity: 0; }
 .kd-clock { flex: 1; display: flex; align-items: center; justify-content: space-evenly; padding: var(--s7-pad); font-variant-numeric: tabular-nums; }

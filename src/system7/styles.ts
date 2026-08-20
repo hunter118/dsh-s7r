@@ -27,6 +27,7 @@ body { background: #777; }
   --s7-check: 12px; --s7-dot: 5px; --s7-dialog-width: 400px; --s7-composer-height: 44px;
   --s7-min-window-width: 168px;
   --s7-white: #fff; --s7-light: #eee; --s7-surface: #ddd; --s7-mid: #aaa; --s7-dark: #555; --s7-ink: #000;
+  --s7-balloon: var(--s7-light); --s7-success: var(--s7-ink); --s7-attention: var(--s7-surface); --s7-danger: var(--s7-ink);
 }
 .kd-desktop[data-base-font="10"] {
   --s7-font: "Fusion Pixel 10", monospace; --s7-mono: "Fusion Pixel Mono 10", monospace;
@@ -39,6 +40,7 @@ body { background: #777; }
   --s7-check: 10px; --s7-dot: 4px; --s7-dialog-width: 330px; --s7-composer-height: 36px;
   --s7-min-window-width: 140px;
 }
+.kd-desktop[data-ui-appearance="color"] { --s7-balloon: #eee3ad; --s7-success: #617b67; --s7-attention: #c8c4a8; --s7-danger: #8b5f5c; }
 .knowledge-desk-host, .knowledge-desk-host button, .knowledge-desk-host input, .knowledge-desk-host textarea, .knowledge-desk-host select {
   font-family: var(--s7-font); font-size: var(--s7-font-size); line-height: var(--s7-line-height); font-weight: 400; font-synthesis: none; font-kerning: none; font-variant-ligatures: none; font-variant-emoji: text; color: var(--s7-ink); text-rendering: optimizeSpeed;
 }
@@ -67,8 +69,8 @@ body { background: #777; }
 .s7-context-menu button:disabled { color: var(--s7-dark); text-shadow: 1px 1px 0 var(--s7-white); }
 .s7-context-separator { height: 1px; margin: 2px 0; background: var(--s7-dark); border-bottom: 1px solid var(--s7-white); }
 .s7-context-heading { overflow: hidden; padding: 1px calc(var(--s7-gap) * 2); border-top: 1px solid var(--s7-white); border-bottom: 1px solid var(--s7-dark); background: var(--s7-mid); color: var(--s7-dark); font: var(--s7-small-font)/var(--s7-small-line) var(--s7-small-mono); text-overflow: ellipsis; white-space: nowrap; }
-.s7-balloon-help { position: absolute; z-index: 140000; width: max-content; max-width: calc(var(--s7-font-size) * 26); padding: calc(var(--s7-gap) * 2); border: 2px solid var(--s7-ink); background: #fff9a8; color: var(--s7-ink); box-shadow: 2px 2px 0 var(--s7-dark); pointer-events: none; white-space: normal; }
-.s7-balloon-help::before { content: ''; position: absolute; left: 8px; top: -8px; width: 8px; height: 8px; border-left: 2px solid var(--s7-ink); border-top: 2px solid var(--s7-ink); background: #fff9a8; transform: skew(-25deg); }
+.s7-balloon-help { position: absolute; z-index: 140000; width: max-content; max-width: calc(var(--s7-font-size) * 26); padding: calc(var(--s7-gap) * 2); border: 2px solid var(--s7-ink); background: var(--s7-balloon); color: var(--s7-ink); box-shadow: 2px 2px 0 var(--s7-dark); pointer-events: none; white-space: normal; }
+.s7-balloon-help::before { content: ''; position: absolute; left: 8px; top: -8px; width: 8px; height: 8px; border-left: 2px solid var(--s7-ink); border-top: 2px solid var(--s7-ink); background: var(--s7-balloon); transform: skew(-25deg); }
 .s7-balloon-help[data-side="above"]::before { top: auto; bottom: -8px; border: 0; border-right: 2px solid var(--s7-ink); border-bottom: 2px solid var(--s7-ink); transform: skew(25deg); }
 .kd-window { position: absolute; display: flex; flex-direction: column; min-width: var(--s7-min-window-width); min-height: var(--s7-title-height); background: var(--s7-surface); border: 1px solid var(--s7-ink); box-shadow: 1px 1px 0 var(--s7-white), 2px 2px 0 var(--s7-ink); overflow: clip; }
 .kd-window[data-active="false"] { box-shadow: 1px 1px 0 var(--s7-dark); }
@@ -128,6 +130,9 @@ body { background: #777; }
 .kd-muted { color: var(--s7-dark); border-left: 1px dotted var(--s7-dark); padding-left: var(--s7-gap); }
 .kd-badge { display: inline-block; border: 1px solid currentColor; padding: 0 2px; font: var(--s7-small-font)/var(--s7-small-line) var(--s7-small-mono); background: var(--s7-light); color: var(--s7-ink); }
 .kd-badge-running { background: var(--s7-ink); color: var(--s7-white); }
+.kd-desktop[data-ui-appearance="color"] .kd-led-running { background: var(--s7-success); }
+.kd-desktop[data-ui-appearance="color"] .kd-badge-running { background: var(--s7-success); }
+.kd-desktop[data-ui-appearance="color"] .s7-inline-error,.kd-desktop[data-ui-appearance="color"] .kd-context-button-critical { border-color: var(--s7-danger); }
 .kd-small { font: var(--s7-small-font)/var(--s7-small-line) var(--s7-small-face); }
 .kd-desktop-notice { position: fixed; inset: 0; z-index: 999999; display: none; place-items: center; background: var(--s7-surface); }
 @media (max-width: 340px), (max-height: 260px) { .kd-desktop-notice { display: grid; } }

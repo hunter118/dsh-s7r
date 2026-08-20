@@ -18,6 +18,7 @@ const DEFAULT_BOUNDS: Record<AppId, Bounds> = {
   trash: { x: 174, y: 74, width: 430, height: 280 },
   'dsh-control': { x: 92, y: 38, width: 570, height: 390 },
   stationery: { x: 126, y: 58, width: 470, height: 340 },
+  'agent-setup': { x: 172, y: 82, width: 376, height: 258 },
 }
 
 export const EMPTY_DESKTOP_STATE: DesktopState = {
@@ -44,6 +45,10 @@ function withFocus(state: DesktopState, id: string): DesktopState {
     nextZ: zIndex + 1,
     windows: state.windows.map(window => window.id === id ? { ...window, zIndex } : window),
   }
+}
+
+function fixedSizeWindow(window: DesktopWindowState): boolean {
+  return window.resizable === false || window.appId === 'clock' || window.appId === 'puzzle' || window.appId === 'agent-setup'
 }
 
 export function windowReducer(state: DesktopState, action: WindowAction): DesktopState {
@@ -111,7 +116,7 @@ export function windowReducer(state: DesktopState, action: WindowAction): Deskto
         state: window.state === 'collapsed' ? 'normal' : 'collapsed',
       }))
     case 'tile': {
-      const visible = state.windows.filter(window => window.state !== 'collapsed')
+      const visible = state.windows.filter(window => window.state !== 'collapsed' && !fixedSizeWindow(window))
       const tiled = tileWindowBounds(visible.length, action.workArea)
       let cursor = 0
       return {
@@ -122,7 +127,7 @@ export function windowReducer(state: DesktopState, action: WindowAction): Deskto
           ...(window.restoreBounds === undefined ? {} : { restoreBounds: { ...window.restoreBounds } }),
           state: window.state,
         })),
-        windows: state.windows.map(window => window.state === 'collapsed'
+        windows: state.windows.map(window => window.state === 'collapsed' || fixedSizeWindow(window)
           ? window
           : { ...window, bounds: tiled[cursor++]!, restoreBounds: undefined, state: 'normal' }),
       }
