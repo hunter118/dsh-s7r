@@ -4,6 +4,17 @@ All notable user-facing changes to S7R are documented here. The project follows 
 
 ## Unreleased
 
+## 0.9.4 - 2026-08-29
+
+### Changed
+
+- Raised the installed and runtime-tested DeepSeek Harness baseline to npm `0.1.1-rc.2` while preserving the explicit `0.1.0-rc.7`/`0.1.0-rc.8` compatibility branch.
+- Rebuilt the lockfile against the complete rc.2 package graph and documented the separate `0.1.2-alpha.1` client-runtime/APIProxy migration boundary.
+
+### Verified
+
+- Installed the packed plugin through the official `0.1.1-rc.2` CLI into a clean Web profile and confirmed root replacement, Knowledge Desk, the 142-entry native plugin inventory, Terminal services, and an error-free browser console.
+
 ## 0.9.3 - 2026-08-20
 
 ### Added

@@ -4,10 +4,11 @@ This is a concise engineering record for contributors. Release-facing changes ar
 
 ## Baseline
 
-- Runtime-tested DSH target: `0.1.0-rc.7`
-- Runtime reference commit: `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`
-- Source-runtime-tested upstream merge: `0.1.0-rc.8` at `141eb6fef83422698aef7a981029e843e8161534`
-- Latest audit date: 2026-08-20
+- Runtime-tested DSH target: `0.1.1-rc.2`
+- Runtime reference commit: `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
+- Retained peer branch: `0.1.0-rc.7` through `0.1.0-rc.8`
+- Audited unsupported preview: `0.1.2-alpha.1` at `cd5ef8148158c3a752a658978873241fdf8e2bbc`
+- Latest audit date: 2026-08-29
 - Node target: 22.19+ or 24+
 - Package manager: pnpm 11.19.0
 
@@ -27,6 +28,7 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 - **0.9.1** added native 8px small-text faces and removed larger-master downscaling from every semantic small-text surface.
 - **0.9.2** contained the long plugin inventory, unified DSH Control Center tab typography, and runtime-validated the compatibility boundary against the rc.8 source merge.
 - **0.9.3** added S7R-owned text editing menus, guided Agent setup, muted period color, coordinated blue-green wallpapers, fixed desk accessories, and a scale-safe Stationery action bar.
+- **0.9.4** moved the installed/runtime baseline to Harness `0.1.1-rc.2`, retained the rc.7/rc.8 peer branch, and recorded the incompatible `0.1.2-alpha.1` client architecture boundary.
 
 ## Architecture decisions
 
@@ -36,17 +38,16 @@ DSH is in developer preview and permits compatibility-breaking changes. All vers
 - The client bundle embeds PDF.js so Preview needs no CDN or runtime network access.
 - Pixel presentation uses native font masters and integer CSS/layout metrics. Only content images are raster-filtered.
 - Desktop Trash contains aliases only and cannot delete real user data.
-- Agent archives created by S7R are a reversible local hide layer because rc.7 has no public unarchive API.
+- Agent archives created by S7R are a reversible local hide layer because rc.2 has no public unarchive API.
 
 ## Verification summary
 
-The 0.9.3 release candidate has passed:
+The 0.9.4 release candidate has passed:
 
 - strict host and client TypeScript checks;
 - 17 Vitest files / 70 deterministic tests;
 - production host and self-contained client builds;
-- clean tarball installation into a disposable DSH Web profile;
-- inherited the 0.9.2 isolated-profile rc.8 source-runtime validation documented in [`../COMPATIBILITY.md`](../COMPATIBILITY.md);
+- clean tarball installation through the official Harness `0.1.1-rc.2` CLI into an isolated Web profile;
 - root replacement, multi-window focus/move/resize/zoom/collapse/tile/reflow;
 - Workspace choice, Agent creation/reopen/rename/export/archive/restore;
 - current-Workspace Agent grouping/filtering/sorting and Workspace-targeted creation;
@@ -58,7 +59,7 @@ The 0.9.3 release candidate has passed:
 - Fit Browser and fixed resolutions at 1×/2× with 10px/12px UI metrics;
 - desktop aliases, marquee multi-selection, group dragging, Trash restore, and state reload;
 - contextual menu contents, keyboard menu navigation, Agent switching, and exact post-tile layout restoration;
-- native DSH model/reasoning, Preset, command/mode, Skill, and 162-entry plugin inventory views;
+- native DSH model/reasoning, Preset, command/mode, Skill, and 142-entry rc.2 plugin inventory views;
 - DSH Agent Preset Stationery and persistent Balloon Help at Fit Browser 1×/2×;
 - non-disruptive streamed-output following with an explicit new-output return control;
 - safe Markdown on/off and monochrome Emoji normalization;
@@ -66,7 +67,7 @@ The 0.9.3 release candidate has passed:
 
 ## Known upstream limitation
 
-DSH rc.7's terminal API exposes spawn, line send, retained read, signal, status, and close. It does not expose a raw browser PTY byte stream or post-spawn terminal resizing. S7R therefore provides a real line-oriented zsh terminal, reflows its local viewport, reports `terminalResize: false`, and keeps the future resize adapter isolated. It does not reach into private backend state.
+DSH rc.2's terminal API exposes spawn, line send, retained read, signal, status, and close. It does not expose a raw browser PTY byte stream or post-spawn terminal resizing. S7R therefore provides a real line-oriented zsh terminal, reflows its local viewport, reports `terminalResize: false`, and keeps the future resize adapter isolated. It does not reach into private backend state.
 
 ## Contributor verification loop
 

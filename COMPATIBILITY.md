@@ -2,17 +2,22 @@
 
 ## Reference baseline
 
-- Installed and runtime-tested DSH package version: `0.1.0-rc.7`
-- Runtime baseline commit: `99f6f02fecdb7dff40c3fbc9470f5907c29f74ca`
-- Source-runtime-tested upstream release merge: `0.1.0-rc.8` at `141eb6fef83422698aef7a981029e843e8161534`
-- Latest audit date: 2026-08-20
+- Installed and runtime-tested DSH package version: `0.1.1-rc.2`
+- Runtime baseline commit: `b150a551b8d465e31e418e1b2eaf5e79bbb7d28e`
+- Retained compatibility branch: `0.1.0-rc.7` through `0.1.0-rc.8`
+- Audited unsupported preview: `0.1.2-alpha.1` at `cd5ef8148158c3a752a658978873241fdf8e2bbc`
+- Latest audit date: 2026-08-29
 - Node target: 22.19+ / 24+
 
 These notes list every seam whose movement could require an adapter change.
 
-## rc.8 source runtime validation
+## rc.2 package runtime validation
 
-At the verification date, the official source tree had merged the `0.1.0-rc.8` release while the npm registry still reported `0.1.0-rc.7`. The exact rc.8 commit was installed and built with Node 24, then launched through the official source CLI with S7R `0.9.2` installed into a clean, isolated Web profile. Browser checks covered root-slot replacement, Knowledge Desk, credential settings, the Display panel at 1x and 2x, and every DSH Control Center catalog. The authoritative loader inventory reported 142 entries and showed `dsh-s7r`, `@deepseek-ai/dsh-terminal`, and `@deepseek-ai/dsh-terminal-bash` enabled and active. No host runtime errors appeared after startup. This validates the supported adapter seams from source without pretending that an unpublished rc.8 package set is the normal install baseline.
+The complete `0.1.1-rc.2` package graph was installed from npm under Node 24 and used for S7R's strict host/client typecheck, deterministic tests, and production build. The packed plugin was then installed through the official rc.2 CLI into a clean, isolated Web profile and launched on a separate loopback port. Browser checks covered root-slot replacement, Knowledge Desk, and the complete DSH Control Center plugin catalog. The authoritative loader inventory reported 142 entries and showed `dsh-s7r`, `@deepseek-ai/dsh-terminal`, and `@deepseek-ai/dsh-terminal-bash` enabled and active; the browser console contained no errors.
+
+The rc.1/rc.2 release changes are additive for S7R's current surface: the new experimental vision route and DeepSeek Files API image preprocessing are owned by the provider/composer path. S7R neither uploads provider images directly nor substitutes its own model transport, so no adapter code change is required. The package peer range nevertheless needed a new explicit `0.1.1-rc.2` prerelease branch because semver does not match a prerelease on a new base tuple through `^0.1.0-rc.7`.
+
+The earlier `0.1.0-rc.8` source validation remains relevant to the retained branch:
 
 - DSH's client renderer moved from `@deepseek-ai/dsh-client-web-react` to `@deepseek-ai/dsh-client-ui-renderer`. S7R imports neither package; it mounts through the stable runtime and `dsh-client-ui-slots` boundary, so no renderer migration is required here.
 - Native command execution gained an image list and command descriptors gained optional `input.images`. S7R calls the public `SessionFace.command()` wrapper, which supplies the new empty image list in rc.8, and its compatibility view now preserves the optional metadata.
@@ -20,6 +25,10 @@ At the verification date, the official source tree had merged the `0.1.0-rc.8` r
 - File-reference and session-reference remotes, attachment UI, and recall presentation are additive. S7R does not inject those optional remotes yet; its existing contained path drops remain text references and unknown future conversation records remain inspectable rather than crashing the renderer.
 - The official terminal backend gained explicit bash/pwsh dialect resolution. S7R's non-empty `/bin/zsh` path and `-f -i` arguments continue to win over dialect defaults, while its owner-scoped terminal service calls are unchanged.
 - The plugin inventory remote remains read-only, so S7R continues to report loader state without non-functional enable switches.
+
+## 0.1.2 alpha boundary
+
+`0.1.2-alpha.1` is a separate preview tag and is not npm `latest`. Its source removes `@deepseek-ai/dsh-client-runtime` and the legacy Host APIProxy generation in favor of a reorganized client state/Remote architecture. Those are structural dependencies of S7R's browser adapter, not changes that can be covered honestly by widening a peer range. S7R therefore does not declare alpha compatibility; it will require a dedicated adapter migration after the new public client contracts stabilize.
 
 ## Supported seams used
 
@@ -32,7 +41,7 @@ At the verification date, the official source tree had merged the `0.1.0-rc.8` r
 | Credentials | `ctx.connection.api.credentials` | Value-free `describe` plus write-only `set`/`unset` for `DEEPSEEK_API_KEY` | The saved value never crosses back to the browser. Credential wire changes affect only the browser adapter and Settings app. |
 | Agent Presets | `ctx.connection.api.agentPresets` and `sessions.create({ agentPreset })` | Stationery creation plus blank-session composition | Preset identifiers/descriptions and blank-only mutation remain DSH-owned. Schema or lock-rule changes affect the client adapter and the two DSH applications. |
 | Models and Skills | `ctx.connection.api.sessions.models/selectModel` and `skills.list` | Per-Agent model/reasoning route plus project Skill catalog | Cold sessions may not have an attached Skill project; S7R keeps other catalogs usable and labels the empty/cold boundary. |
-| Commands and plugins | `ctx.remote.commands` and `ctx.remote.pluginInventory` | Agent slash commands/modes and loader inventory | Plugin inventory is read-only in rc.7. Remote namespace or result-envelope changes affect only the browser compatibility adapter. |
+| Commands and plugins | `ctx.remote.commands` and `ctx.remote.pluginInventory` | Agent slash commands/modes and loader inventory | Plugin inventory remains read-only in rc.2. Remote namespace or result-envelope changes affect only the browser compatibility adapter. |
 | Connection | `ctx.connection.rpc.handle/call` | Logical `/knowledge-desk` endpoint | RPC envelope or authority API changes affect `src/dsh-compat`. |
 | Agents | `ctx.agents.list/get` and public `Agent` state | Monitor, timeline ownership, file/terminal authority | A roster/status rename affects the host adapter only. |
 | Event ledger | `Agent.session.events` | Complete Timeline/export/Find, estimated context categories, and provider-reported context pressure/capacity | If DSH moves live events behind a projection service, replace those host endpoints. |
@@ -45,7 +54,7 @@ At the verification date, the official source tree had merged the `0.1.0-rc.8` r
 ## Deliberately unused integration techniques
 
 - **DOM selectors:** none. The plugin does not hide or mutate DSH elements.
-- **Private APIs:** none intentionally imported. Publicly exported rc.7 types/services are used.
+- **Private APIs:** none intentionally imported. Publicly exported rc.2 types/services are used.
 - **Iframe bridge:** none.
 - **Native browser alerts/confirms:** none.
 - **Direct filesystem/process access from the browser:** none.
@@ -55,22 +64,22 @@ At the verification date, the official source tree had merged the `0.1.0-rc.8` r
 
 ### Agent unarchive
 
-DSH rc.7 publishes `archiveSession` but no supported unarchive operation. S7R 0.6 therefore does not send new archive actions into that one-way API: it records a reversible local hidden-session entry and leaves the DSH session and event log unchanged. Older session IDs already present in DSH's native archive catalog are labelled in Knowledge Desk and cannot be restored without a future public DSH seam. This is kept separate from exported conversation data and is never presented as deletion.
+DSH rc.2 publishes `archiveSession` but no supported unarchive operation. S7R therefore does not send new archive actions into that one-way API: it records a reversible local hidden-session entry and leaves the DSH session and event log unchanged. Older session IDs already present in DSH's native archive catalog are labelled in Knowledge Desk and cannot be restored without a future public DSH seam. This is kept separate from exported conversation data and is never presented as deletion.
 
 ### Plugin mutation
 
-DSH rc.7 exposes the plugin loader inventory to browser clients but no supported transactional enable/disable operation. S7R therefore reports module, entry, configured enabled state, and current fiber phase without offering switches. Installing or changing DSH plugins remains a DSH profile-management operation.
+DSH rc.2 exposes the plugin loader inventory to browser clients but no supported transactional enable/disable operation. S7R therefore reports module, entry, configured enabled state, and current fiber phase without offering switches. Installing or changing DSH plugins remains a DSH profile-management operation.
 
 ### Terminal transport
 
-The rc.7 `TerminalSessionService` and `TerminalBackendSession` expose spawn, send, read, signal, status, and close, but no resize operation. The terminal-bash backend sets rows/columns from deployment config at spawn. Knowledge Desk therefore:
+The rc.2 `TerminalSessionService` and `TerminalBackendSession` expose spawn, send, read, signal, status, and close, but no resize operation. The terminal-bash backend sets rows/columns from deployment config at spawn. Knowledge Desk therefore:
 
 - resizes/reflows the Terminal window and scroll viewport;
 - reports `terminalResize: false` through capabilities;
 - keeps a forward-compatible `terminal/resize` logical endpoint that returns `{ supported: false }`;
 - does not reach into service-private backend maps or subprocess handles.
 
-This is the only Definition-of-Done item not implementable through the supported rc.7 terminal API. When DSH publishes owner-checked resize, implement it in `src/dsh-compat/host.ts` and change `TerminalOpenView.resizeSupported` to a boolean.
+This is the only Definition-of-Done item not implementable through the supported rc.2 terminal API. When DSH publishes owner-checked resize, implement it in `src/dsh-compat/host.ts` and change `TerminalOpenView.resizeSupported` to a boolean.
 
 The same public service is deliberately line-oriented. It accepts a complete text send and returns retained/sanitized scrollback; it does not expose a raw PTY byte stream or browser-side terminal resize channel. Knowledge Desk therefore labels its zsh client honestly instead of embedding xterm.js over an unavailable raw transport.
 
@@ -80,7 +89,7 @@ Finder, TextEdit, Preview, and Timeline work for live agents and cold persisted 
 
 ## Upgrade checklist
 
-When moving past rc.7:
+When moving past rc.2:
 
 1. run `pnpm typecheck` against the new DSH packages;
 2. check root-slot name/priority behavior and `PropsRuntime<'root'>`;

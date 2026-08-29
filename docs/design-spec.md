@@ -105,13 +105,13 @@ The compatibility layer must:
 - allow cold persisted sessions to be inspected without resuming them;
 - keep future DSH version changes local to the adapter.
 
-See [`../COMPATIBILITY.md`](../COMPATIBILITY.md) for the exact rc.7 seams.
+See [`../COMPATIBILITY.md`](../COMPATIBILITY.md) for the exact rc.2 seams.
 
 ## Files and terminal
 
 Finder, TextEdit, and Preview operate on DSH-resolved paths under the selected Workspace. Text saves carry the last-read version and surface concurrent edits as conflicts. Binary reads are bounded.
 
-Terminal uses DSH's official owner-scoped terminal service and `/bin/zsh -f -i`. It can create a fresh blank live owner for a recent Workspace when no Agent window is active. DSH rc.7 is line-oriented and exposes neither raw browser PTY bytes nor post-spawn resize; S7R must not claim otherwise.
+Terminal uses DSH's official owner-scoped terminal service and `/bin/zsh -f -i`. It can create a fresh blank live owner for a recent Workspace when no Agent window is active. DSH rc.2 is line-oriented and exposes neither raw browser PTY bytes nor post-spawn resize; S7R must not claim otherwise.
 
 ## Display system
 
